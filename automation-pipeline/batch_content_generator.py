@@ -138,7 +138,7 @@ description: "{title}에 대한 체계적인 실무 적용 가이드, 비교 분
 pubDate: {pub_date}
 category: "{cat_korean}"
 tags: {tags}
-author: "앱시안 (absian)"
+author: "{config.get('site', {}).get('author', '골든라이프 편집팀')}"
 readingTime: "{reading_time}"
 featured: {str(idx % 15 == 0).lower()}
 draft: false

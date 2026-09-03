@@ -47,7 +47,7 @@ description: "검색 엔진에 노출될 매력적인 요약문 2문장"
 pubDate: {datetime.now().strftime("%Y-%m-%d")}
 category: "AI & 생산성"
 tags: ['{keyword}', '최신트렌드', '기술동향', 'IT뉴스']
-author: "앱시안 (absian)"
+author: "{config.get('site', {}).get('author', '골든라이프 편집팀')}"
 readingTime: "5 min read"
 featured: false
 draft: false
@@ -69,7 +69,7 @@ description: "GEMINI_API_KEY가 없어서 테스트로 생성된 글입니다."
 pubDate: {datetime.now().strftime("%Y-%m-%d")}
 category: "AI & 생산성"
 tags: ['{keyword}', '테스트']
-author: "앱시안 (absian)"
+author: "{config.get('site', {}).get('author', '골든라이프 편집팀')}"
 readingTime: "2 min read"
 featured: false
 draft: false

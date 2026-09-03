@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory={{INSTALL_DIR}}/automation-pipeline
-ExecStart=/usr/bin/python3 telegram_daemon.py
+ExecStart={{INSTALL_DIR}}/automation-pipeline/venv/bin/python3 telegram_daemon.py
 Restart=always
 RestartSec=10
 EnvironmentFile={{INSTALL_DIR}}/.env

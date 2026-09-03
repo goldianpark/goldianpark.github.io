@@ -11,24 +11,24 @@ engine:
 
 # 2. 블로그 사이트 메타데이터 (도메인 루트)
 site:
-  title: "앱시안(absian)"
-  description: "AI 생산성 도구, 개발 팁, 스마트 부업 및 테크 트렌드 전문 블로그"
-  author: "앱시안 (absian)"
-  url: "https://absianp.github.io"
+  title: "골든라이프(GoldenLife)"
+  description: "기초연금 및 65세 이상 복지 혜택, 국민·주택연금 절세 상식, 시니어 관절·혈관 건강 정보를 알기 쉽게 전하는 실버 전문 매거진"
+  author: "골든라이프 편집팀"
+  url: "https://goldianpark.github.io"
   default_language: "ko"
   theme_color: "#2563eb"
 
 # 3. 구글 애드센스 (Google AdSense) 설정
 adsense:
-  enabled: true
-  publisher_id: "ca-pub-3054784185688248" # 구글 애드센스 인증 완료
+  enabled: false
+  publisher_id: ""
   auto_ads: true
   slots:
-    top_banner: "1234567890"
-    in_article_1: "2345678901"
-    in_article_2: "3456789012"
-    bottom_banner: "4567890123"
-    sidebar_banner: "5678901234"
+    top_banner: ""
+    in_article_1: ""
+    in_article_2: ""
+    bottom_banner: ""
+    sidebar_banner: ""
 
 # 3-1. 웹 분석 (GA4) 및 검색엔진 소유권 인증
 analytics:
@@ -39,18 +39,18 @@ analytics:
 # 4. 콘텐츠 생성 & 타겟 분야 설정
 content:
   categories:
-    - name: "AI & 생산성"
-      slug: "ai-productivity"
-      keywords: ["ChatGPT 활용법", "Claude 프롬프트 팁", "AI 이미지 생성", "생산성 노션 템플릿", "무료 AI 툴 추천", "자동화 스크립트"]
-    - name: "개발 & 테크"
-      slug: "tech-dev"
-      keywords: ["파이썬 자동화", "웹 개발 기초", "깃허브 팁", "VS Code 필수 플러그인", "클라우드 무료 티어 활용"]
-    - name: "스마트 부업 & 재테크"
-      slug: "side-income"
-      keywords: ["무자본 디지털 노마드", "블로그 수익화 전략", "애드센스 승인 팁", "노코드 툴 활용 부업"]
+    - name: "정부지원금 & 복지"
+      slug: "정부지원금-and-복지"
+      keywords: ["65세이상혜택", "기초연금", "노인복지", "통신비감면", "틀니임플란트지원"]
+    - name: "연금 & 절세 상식"
+      slug: "연금-and-절세-상식"
+      keywords: ["국민연금조기수령", "주택연금", "상속세면제한도", "피부양자자격유지", "사전증여"]
+    - name: "시니어 건강 & 일상"
+      slug: "시니어-건강-and-일상"
+      keywords: ["퇴행성관절염", "무릎통증완화운동", "인공관절수술비지원", "치매자가진단", "시니어영양제"]
   
   target_length_words: 1800
-  tone_style: "친절하면서도 전문적이고 명확한 해결책을 제시하는 존댓말 스타일"
+  tone_style: "6070 어르신들이 읽기 편안하도록 친절하고 정중하며 명확한 해결책을 제시하는 설명조 스타일"
   include_faq: true
   include_toc: true
 

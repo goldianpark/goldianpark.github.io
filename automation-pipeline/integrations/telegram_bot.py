@@ -25,7 +25,7 @@ def _load_env_file():
 
 class TelegramNotifier:
     """
-    앱시안(absian) 블로그 운영 텔레그램 스마트 알림 에이전트
+    골든라이프(GoldenLife) 블로그 운영 텔레그램 스마트 알림 에이전트
     1. 새로운 주제 탐색 보고
     2. 새로운 글 작성 및 배포 보고
     3. 일일 사이트 현황 보고 (아침 8시 / 저녁 7시)
@@ -40,7 +40,7 @@ class TelegramNotifier:
         self.enabled = telegram_cfg.get("enabled", True)
         self.bot_token = telegram_cfg.get("bot_token") or os.getenv("TELEGRAM_BOT_TOKEN", "")
         self.chat_id = str(telegram_cfg.get("chat_id") or os.getenv("TELEGRAM_CHAT_ID", ""))
-        self.site_url = config.get("site", {}).get("url", "https://absianp.github.io")
+        self.site_url = config.get("site", {}).get("url", "https://goldianpark.github.io")
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}" if self.bot_token else None
 
     def _send_message(self, text: str, reply_markup: Optional[Dict] = None) -> bool:

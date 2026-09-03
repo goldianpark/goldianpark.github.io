@@ -23,8 +23,8 @@ def load_config(config_path: str = "config/config.yaml") -> dict:
         return yaml.safe_load(f)
 
 def run_auto_pipeline(config: dict, auto_approve: bool = True, target_category: str = None):
-    site_title = config.get("site", {}).get("title", "앱시안(absian)")
-    site_url = config.get("site", {}).get("url", "https://absianp.github.io")
+    site_title = config.get("site", {}).get("title", "골든라이프(GoldenLife)")
+    site_url = config.get("site", {}).get("url", "https://goldianpark.github.io")
     print("=" * 60)
     print(f"🤖 [{site_title}] 에이전트 파이프라인 가동 시작")
     print(f"📌 블로그: {site_title} ({site_url})")
@@ -118,8 +118,8 @@ def run_dryrun_pipeline(config: dict):
         telegram.send_health_report({"error_details": f"🚨 [Dry-run 실패] 파이프라인 에러 감지: {e}"}, is_alert=True)
 
 def run_geeknews_weekly_pipeline(config: dict):
-    site_title = config.get("site", {}).get("title", "앱시안(absian)")
-    site_url = config.get("site", {}).get("url", "https://absianp.github.io")
+    site_title = config.get("site", {}).get("title", "골든라이프(GoldenLife)")
+    site_url = config.get("site", {}).get("url", "https://goldianpark.github.io")
     print("=" * 60)
     print(f"📰 [{site_title}] 긱뉴스(GeekNews) 주간 테크 브리핑 파이프라인 가동 (매주 금요일 08:00 KST)")
     print(f"📌 블로그: {site_title} ({site_url})")
@@ -162,7 +162,7 @@ def run_geeknews_weekly_pipeline(config: dict):
     print("🎉 GeekNews 주간 테크 브리핑 발행 완료!")
 
 def main():
-    parser = argparse.ArgumentParser(description="앱시안(absian) 자동화 블로그 파이프라인")
+    parser = argparse.ArgumentParser(description="골든라이프(GoldenLife) 자동화 블로그 파이프라인")
     parser.add_argument("--mode", choices=["auto", "dryrun", "geeknews_weekly", "trend", "interactive", "report", "morning_report", "evening_report", "revenue_report", "health", "test_telegram"], default="auto")
     parser.add_argument("--approve", action="store_true", help="초안 자동 승인 모드")
     parser.add_argument("--category", type=str, default=None, help="특정 카테고리 지정")

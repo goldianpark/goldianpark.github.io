@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 config = load_config()
 _load_env_file()
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+SITE_TITLE = config.get("site", {}).get("title", "골든라이프(GoldenLife)")
+SITE_URL = config.get("site", {}).get("url", "https://goldianpark.github.io").rstrip("/")
 
 # Chat session storage: { chat_id: { "state": ..., "topic": ..., "draft": ..., "slug": ..., "feedbacks": [...], "busy": ..., "action": ... } }
 sessions = {}
@@ -91,7 +93,7 @@ def fetch_url_context(url: str) -> str:
         return ""
 
 async def handle_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = """📚 <b>[앱시안 블로그 에이전트 명령어 & 사용 가이드]</b>
+    msg = f"""📚 <b>[{SITE_TITLE} 블로그 에이전트 명령어 & 사용 가이드]</b>
 ━━━━━━━━━━━━━━━━━━━━
 🤖 <b>기본 명령어 목록:</b>
 
@@ -112,13 +114,13 @@ async def handle_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE
    • 기획안이나 초안 단계에서 추가하고 싶은 내용을 메시지로 계속 전송하면 실시간으로 본문에 반영
 
 3. <b>기존 글 수정:</b>
-   • <code>https://absianp.github.io/blog/...</code> 링크와 함께 수정할 내용을 입력"""
+   • <code>{SITE_URL}/blog/...</code> 링크와 함께 수정할 내용을 입력"""
 
     await update.message.reply_text(msg, parse_mode="HTML")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👋 <b>앱시안 인터랙티브 블로그 AI 에이전트에 오신 것을 환영합니다!</b>\n\n"
+        f"👋 <b>{SITE_TITLE} 인터랙티브 블로그 AI 에이전트에 오신 것을 환영합니다!</b>\n\n"
         "자유롭게 작성하고 싶은 <b>주제</b>나 <b>참고 링크/자료</b>를 채팅창에 보내주시면 글 작성이 시작됩니다.\n\n"
         "전체 명령어 및 사용 방법이 궁금하시면 언제든 <code>/help</code> 를 입력해 주세요! 🚀",
         parse_mode="HTML"
@@ -151,7 +153,7 @@ async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TY
                 content = f.read()
                 title_match = re.search(r"^title:\s*(.+)$", content, re.MULTILINE)
                 latest_title = title_match.group(1).strip("'\"") if title_match else latest_slug
-            site_url = config.get("site", {}).get("url", "https://absianp.github.io")
+            site_url = SITE_URL
             latest_post_url = f"{site_url.rstrip('/')}/blog/{latest_slug}/"
             latest_post_info = f"<b>{latest_title}</b>"
     except Exception:
@@ -229,7 +231,7 @@ async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TY
 
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    msg = f"""📊 <b>[앱시안 블로그 에이전트 시스템 현황]</b> ({now_str})
+    msg = f"""📊 <b>[{SITE_TITLE} 블로그 에이전트 시스템 현황]</b> ({now_str})
 ━━━━━━━━━━━━━━━━━━━━
 🍓 <b>라즈베리파이 5 서버 상태</b>
   • 🌡️ CPU 온도: <b>{cpu_temp}</b>
@@ -251,7 +253,7 @@ async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TY
     keyboard = []
     if latest_post_url:
         keyboard.append([InlineKeyboardButton("🌐 최근 발행 글 보기", url=latest_post_url)])
-    keyboard.append([InlineKeyboardButton("🏠 블로그 메인 홈", url=config.get("site", {}).get("url", "https://absianp.github.io"))])
+    keyboard.append([InlineKeyboardButton("🏠 블로그 메인 홈", url=SITE_URL)])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(msg, parse_mode="HTML", reply_markup=reply_markup, disable_web_page_preview=True)
@@ -277,7 +279,7 @@ async def handle_write_command(update: Update, context: ContextTypes.DEFAULT_TYP
 async def handle_edit_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = " ".join(context.args) if context.args else ""
     if not user_text:
-        await update.message.reply_text("⚠️ 수정할 블로그 글 URL과 수정 요청사항을 함께 입력해주세요.\n예: /edit https://absianp.github.io/blog/2026-08-31-llm-qwen-27b/ 제목 변경해줘")
+        await update.message.reply_text(f"⚠️ 수정할 블로그 글 URL과 수정 요청사항을 함께 입력해주세요.\n예: /edit {SITE_URL}/blog/2026-09-03-senior-welfare-benefits-guide/ 제목 변경해줘")
         return
     await route_message(update.message, user_text, context)
 
@@ -290,7 +292,7 @@ async def route_message(message, user_text, context):
     session = sessions.get(chat_id)
 
     # 1. Existing Blog Edit Request
-    blog_url_match = re.search(r"absianp\.github\.io/blog/([^/\s?#]+)", user_text)
+    blog_url_match = re.search(r"(?:https?://[^/\s]+/)?blog/([^/\s?#]+)", user_text)
     if blog_url_match or user_text.strip().startswith("/edit"):
         sessions[chat_id] = {"state": "EDITING", "feedbacks": [user_text]}
         await process_edit_input(message, user_text, blog_url_match, context)
@@ -343,7 +345,7 @@ async def generate_or_update_topic_plan(message, chat_id, user_input, context, i
         url_context = ""
         if url_match:
             raw_url = url_match.group(0).rstrip(".,)")
-            if not "github.com" in raw_url and not "absianp.github.io" in raw_url:
+            if not "github.com" in raw_url and not SITE_URL.replace("https://", "").replace("http://", "") in raw_url:
                 url_context = fetch_url_context(raw_url)
 
         if is_update and current_topic:
@@ -681,7 +683,7 @@ async def execute_publish(chat_id, context, is_draft=True):
         inspection = inspector.inspect_article(article)
         saved_path = publisher.publish_article(article)
         
-        site_url = config.get("site", {}).get("url", "https://absianp.github.io")
+        site_url = SITE_URL
         post_slug = os.path.splitext(os.path.basename(saved_path))[0]
         full_post_url = f"{site_url.rstrip('/')}/blog/{post_slug}/"
 
@@ -740,7 +742,7 @@ async def execute_batch_publish(chat_id, context):
         inspector = PolicyInspector(config)
         telegram = TelegramNotifier(config)
         indexer = GoogleIndexing(config)
-        site_url = config.get("site", {}).get("url", "https://absianp.github.io")
+        site_url = SITE_URL
 
         published_results = []
 
@@ -964,7 +966,7 @@ async def execute_edit_publish(chat_id, context):
         indexer = GoogleIndexing(config)
         
         saved_path, final_slug = publisher.update_existing_article(slug, article_data, new_slug=new_slug)
-        site_url = config.get("site", {}).get("url", "https://absianp.github.io")
+        site_url = SITE_URL
         full_post_url = f"{site_url.rstrip('/')}/blog/{final_slug}/"
         
         indexer.ping_sitemap()
