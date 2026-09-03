@@ -1,0 +1,12 @@
+[Unit]
+Description=Timer for GoldenLife Auto Blog 4-Hour Agent Execution
+Requires=auto-blog-goldenlife-pipeline.service
+
+[Timer]
+# 4시간마다 자동 주제 발굴, 글 작성 및 배포 실행 (02:00, 06:00, 10:00, 14:00, 18:00, 22:00 KST)
+OnCalendar=02,06,10,14,18,22:00:00
+# 라즈베리파이가 꺼져 있다 켜졌을 경우 누락된 실행 즉시 수행
+Persistent=true
+
+[Install]
+WantedBy=timers.target

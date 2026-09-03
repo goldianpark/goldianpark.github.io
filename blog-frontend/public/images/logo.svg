@@ -1,0 +1,66 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background Gradient (Rich Metallic Gold) -->
+    <linearGradient id="bgGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="25%" stop-color="#F59E0B"/>
+      <stop offset="60%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#78350F"/>
+    </linearGradient>
+
+    <!-- Inner Radial Glow -->
+    <radialGradient id="sunGlow" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#FEF3C7" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#FBBF24" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#B45309" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Emblem Pure Gold Gradient -->
+    <linearGradient id="leafGold" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FEF3C7"/>
+      <stop offset="50%" stop-color="#FFFBEB"/>
+      <stop offset="100%" stop-color="#FDE68A"/>
+    </linearGradient>
+
+    <!-- Drop Shadow Filter -->
+    <filter id="goldShadow" x="-10%" y="-10%" width="130%" height="130%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#451A03" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle Base with Soft Shadow -->
+  <rect x="24" y="24" width="464" height="464" rx="128" fill="url(#bgGold)" filter="url(#goldShadow)"/>
+  
+  <!-- Outer Gold Rim -->
+  <rect x="28" y="28" width="456" height="456" rx="124" stroke="#FEF3C7" stroke-width="4" stroke-opacity="0.4"/>
+
+  <!-- Radial Glow Behind Sun -->
+  <circle cx="256" cy="235" r="170" fill="url(#sunGlow)"/>
+
+  <!-- Golden Sun Core (Vibrant Longevity & Energy) -->
+  <circle cx="256" cy="235" r="75" fill="#FFFBEB"/>
+  <circle cx="256" cy="235" r="62" fill="url(#leafGold)"/>
+
+  <!-- Radiant Sun Rays (Warm Golden Light) -->
+  <g stroke="#FFFBEB" stroke-width="6" stroke-linecap="round" opacity="0.9">
+    <line x1="256" y1="118" x2="256" y2="142"/>
+    <line x1="256" y1="328" x2="256" y2="352"/>
+    <line x1="139" y1="235" x2="163" y2="235"/>
+    <line x1="349" y1="235" x2="373" y2="235"/>
+    <line x1="173" y1="152" x2="190" y2="169"/>
+    <line x1="322" y1="301" x2="339" y2="318"/>
+    <line x1="173" y1="318" x2="190" y2="301"/>
+    <line x1="322" y1="169" x2="339" y2="152"/>
+  </g>
+
+  <!-- Golden Life Tree / Vitality Leaves (시니어 활력 & 풍요의 잎) -->
+  <path d="M256 395 C256 320 205 285 175 285 C170 325 210 380 256 395 Z" fill="url(#leafGold)"/>
+  <path d="M256 395 C256 320 307 285 337 285 C342 325 302 380 256 395 Z" fill="url(#leafGold)"/>
+  
+  <!-- Central Sprout & Golden Stem -->
+  <path d="M256 415 L256 265" stroke="#FFFBEB" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="256" cy="255" r="10" fill="#FFFBEB"/>
+
+  <!-- Stylized Elegant "G" Crest Subtle Accent -->
+  <path d="M205 210 C215 175 295 175 305 210" stroke="#78350F" stroke-width="4" stroke-linecap="round" opacity="0.25"/>
+</svg>

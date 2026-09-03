@@ -1,0 +1,16 @@
+[Unit]
+Description=GoldenLife Auto Blog System - 4-Hour Content Harvester & Publisher Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ian/golden-life-blog/automation-pipeline
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/home/ian/golden-life-blog/.env
+ExecStart=/home/ian/golden-life-blog/automation-pipeline/venv/bin/python3 main_pipeline.py --mode auto --approve
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
