@@ -6,6 +6,7 @@ import AdSense from '../components/AdSense.astro';
 import { getCollection } from 'astro:content';
 import { getPostSummary } from '../utils/summary';
 import { getDynamicCategories } from '../utils/categories';
+import siteConfig from '../config/site';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -27,19 +28,19 @@ const categories = [
 ---
 
 <BaseLayout
-  title="앱시안(absian) - AI 도구 & 실전 자동화 테크"
-  description="AI 생산성 도구, 실전 개발 팁, 자동화 부업 파이프라인 및 최신 테크 트렌드 전문 블로그"
+  title={siteConfig.site.name}
+  description={siteConfig.site.description}
 >
   <section class="bg-gradient-to-b from-blue-50/70 via-slate-50 to-slate-50 border-b border-slate-200/60 py-16 sm:py-24">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100/80 text-blue-700 text-xs font-semibold mb-6">
-        <span>✨ 2026 최신 AI & 스마트 자동화 테크 매거진</span>
+        <span>✨ {siteConfig.site.slogan}</span>
       </div>
       <h1 class="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight max-w-3xl mx-auto mb-6">
-        일상을 혁신하는 <span class="text-blue-600">AI 도구</span>와 <br class="hidden sm:inline" />실전 자동화 테크 가이드
+        {siteConfig.site.shortName} <span class="text-blue-600">실전 백과</span>
       </h1>
       <p class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed mb-8">
-        검증된 개발 팁부터 무자본 디지털 노마드 부업 전략까지, 생산성을 극대화하는 실질적인 인사이트를 제공합니다.
+        {siteConfig.site.description}
       </p>
       
       <div class="flex flex-wrap items-center justify-center gap-2">

@@ -1,5 +1,6 @@
 ---
 import { getDynamicCategories } from '../utils/categories';
+import siteConfig from '../config/site';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -13,14 +14,14 @@ const { primaryCategories, secondaryCategories, allCategories } = await getDynam
     <a href={`${base}/`} class="flex items-center gap-2.5 group flex-shrink-0">
       <img
         src={`${base}/favicon.png`}
-        alt="앱시안(absian) 로고"
+        alt={`${siteConfig.site.shortName} 로고`}
         class="w-9 h-9 object-contain group-hover:scale-105 transition-transform"
       />
       <div class="flex flex-col">
         <span class="font-bold text-slate-900 text-lg tracking-tight group-hover:text-blue-600 transition-colors">
-          앱시안(absian)
+          {siteConfig.site.shortName}
         </span>
-        <span class="text-[10px] text-slate-500 -mt-1 font-medium tracking-wide uppercase">AI & Tech Insights</span>
+        <span class="text-[10px] text-slate-500 -mt-1 font-medium tracking-wide uppercase">{siteConfig.site.slogan}</span>
       </div>
     </a>
 
