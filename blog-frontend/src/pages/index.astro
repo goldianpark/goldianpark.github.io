@@ -31,23 +31,25 @@ const categories = [
   title={siteConfig.site.name}
   description={siteConfig.site.description}
 >
-  <section class="bg-gradient-to-b from-blue-50/70 via-slate-50 to-slate-50 border-b border-slate-200/60 py-16 sm:py-24">
+  <!-- Hero Section with Warm Gold Gradient -->
+  <section class="bg-gradient-to-b from-amber-100/70 via-amber-50/40 to-[#FAF8F5] border-b-2 border-amber-200/70 py-16 sm:py-24">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100/80 text-blue-700 text-xs font-semibold mb-6">
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs sm:text-sm font-bold mb-6 shadow-2xs">
         <span>✨ {siteConfig.site.slogan}</span>
       </div>
-      <h1 class="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight max-w-3xl mx-auto mb-6">
-        {siteConfig.site.shortName} <span class="text-blue-600">실전 백과</span>
+      <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-950 tracking-tight leading-tight max-w-4xl mx-auto mb-6">
+        {siteConfig.site.shortName} <span class="text-amber-700 underline decoration-amber-300 underline-offset-8">시니어 백과</span>
       </h1>
-      <p class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed mb-8">
+      <p class="text-base sm:text-xl text-slate-700 max-w-3xl mx-auto leading-relaxed mb-8 font-medium">
         {siteConfig.site.description}
       </p>
       
-      <div class="flex flex-wrap items-center justify-center gap-2">
+      <!-- Quick Categories Pills (Gold Theme) -->
+      <div class="flex flex-wrap items-center justify-center gap-2.5">
         {categories.map(cat => (
           <a
             href={cat.href}
-            class="px-4 py-2 bg-white hover:bg-blue-600 hover:text-white text-slate-700 font-medium text-xs rounded-xl border border-slate-200 shadow-sm transition-all"
+            class="px-4.5 py-2.5 bg-white hover:bg-amber-700 hover:text-white text-slate-800 font-bold text-sm rounded-xl border-2 border-amber-200/90 shadow-2xs hover:shadow-sm transition-all"
           >
             {cat.name}
           </a>
@@ -64,36 +66,36 @@ const categories = [
     <!-- Header with View Switcher -->
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
       <div>
-        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">최신 아티클</h2>
-        <p class="text-sm text-slate-500 mt-1">에이전트가 엄선한 고품질 테크 & 생산성 가이드</p>
+        <h2 class="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight">최신 알짜 정보</h2>
+        <p class="text-sm sm:text-base text-amber-900/80 font-medium mt-1">6070 어르신을 위한 정부 지원금, 연금, 건강 핵심 가이드</p>
       </div>
 
       <div class="flex items-center gap-3 self-start sm:self-auto">
         <!-- View Switcher Tabs -->
-        <div class="inline-flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600">
+        <div class="inline-flex items-center p-1 bg-amber-100/70 rounded-xl border border-amber-200 text-xs font-bold text-slate-700">
           <button
             id="home-btn-feed"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-blue-600 shadow-xs transition-all cursor-pointer"
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white text-amber-900 shadow-xs transition-all cursor-pointer font-bold"
             title="피드형 (상세 요약)"
           >
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
             </svg>
             <span>피드형</span>
           </button>
           <button
             id="home-btn-grid"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition-all cursor-pointer"
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-slate-600 hover:text-amber-900 transition-all cursor-pointer font-bold"
             title="썸네일 모아보기"
           >
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
             </svg>
             <span>🖼️ 썸네일형</span>
           </button>
         </div>
 
-        <a href={`${base}/blog/`} class="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700">
+        <a href={`${base}/blog/`} class="hidden sm:inline-flex items-center gap-1 text-sm font-bold text-amber-800 hover:text-amber-900">
           전체보기 →
         </a>
       </div>
@@ -134,57 +136,67 @@ const categories = [
         </div>
       </>
     ) : (
-      <div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
-        <p class="text-slate-500 text-sm">아직 등록된 포스트가 없습니다. 에이전트를 실행하여 첫 글을 발행해보세요!</p>
+      <div class="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-amber-200">
+        <p class="text-slate-500 text-base">아직 등록된 포스트가 없습니다.</p>
       </div>
     )}
 
-    <div class="mt-12">
-      <AdSense slotId="3456789012" type="multiplex" />
+    <div class="mt-12 text-center">
+      <a
+        href={`${base}/blog/`}
+        class="inline-flex items-center gap-2 px-6 py-3.5 bg-amber-700 hover:bg-amber-800 text-white font-bold text-base rounded-xl shadow-xs transition-all"
+      >
+        <span>전체 글 목록 보러가기</span>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        </svg>
+      </a>
     </div>
   </section>
 
+  <!-- Bottom AdSense Slot -->
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+    <AdSense slotId="4567890123" type="bottom-banner" />
+  </div>
+
   <script is:inline>
-    (function () {
-      const feedBtn = document.getElementById('home-btn-feed');
-      const gridBtn = document.getElementById('home-btn-grid');
-      const feedContainer = document.getElementById('home-feed-container');
-      const gridContainer = document.getElementById('home-grid-container');
+    // Tab switching between Feed and Thumbnail Grid
+    const btnFeed = document.getElementById('home-btn-feed');
+    const btnGrid = document.getElementById('home-btn-grid');
+    const containerFeed = document.getElementById('home-feed-container');
+    const containerGrid = document.getElementById('home-grid-container');
 
-      if (!feedBtn || !gridBtn || !feedContainer || !gridContainer) return;
+    function setView(mode) {
+      if (!containerFeed || !containerGrid) return;
+      if (mode === 'grid') {
+        containerFeed.classList.add('hidden');
+        containerGrid.classList.remove('hidden');
 
-      function setView(mode) {
-        if (mode === 'grid') {
-          feedContainer.classList.add('hidden');
-          gridContainer.classList.remove('hidden');
+        btnGrid.classList.add('bg-white', 'text-amber-900', 'shadow-xs');
+        btnGrid.classList.remove('text-slate-600');
 
-          gridBtn.classList.add('bg-white', 'text-blue-600', 'shadow-xs');
-          gridBtn.classList.remove('text-slate-500');
+        btnFeed.classList.remove('bg-white', 'text-amber-900', 'shadow-xs');
+        btnFeed.classList.add('text-slate-600');
+        localStorage.setItem('home_view_mode', 'grid');
+      } else {
+        containerGrid.classList.add('hidden');
+        containerFeed.classList.remove('hidden');
 
-          feedBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-xs');
-          feedBtn.classList.add('text-slate-500');
-          localStorage.setItem('absian_view_mode', 'grid');
-        } else {
-          gridContainer.classList.add('hidden');
-          feedContainer.classList.remove('hidden');
+        btnFeed.classList.add('bg-white', 'text-amber-900', 'shadow-xs');
+        btnFeed.classList.remove('text-slate-600');
 
-          feedBtn.classList.add('bg-white', 'text-blue-600', 'shadow-xs');
-          feedBtn.classList.remove('text-slate-500');
-
-          gridBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-xs');
-          gridBtn.classList.add('text-slate-500');
-          localStorage.setItem('absian_view_mode', 'feed');
-        }
+        btnGrid.classList.remove('bg-white', 'text-amber-900', 'shadow-xs');
+        btnGrid.classList.add('text-slate-600');
+        localStorage.setItem('home_view_mode', 'feed');
       }
+    }
 
-      feedBtn.addEventListener('click', () => setView('feed'));
-      gridBtn.addEventListener('click', () => setView('grid'));
+    const savedMode = localStorage.getItem('home_view_mode') || 'feed';
+    if (savedMode === 'grid') setView('grid');
 
-      // 로컬스토리지에 저장된 사용자 선호 모드 동기화
-      const savedMode = localStorage.getItem('absian_view_mode');
-      if (savedMode === 'grid') {
-        setView('grid');
-      }
-    })();
+    if (btnFeed && btnGrid) {
+      btnFeed.addEventListener('click', () => setView('feed'));
+      btnGrid.addEventListener('click', () => setView('grid'));
+    }
   </script>
 </BaseLayout>

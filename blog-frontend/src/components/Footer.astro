@@ -5,55 +5,57 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const currentYear = new Date().getFullYear();
 ---
 
-<footer class="mt-auto bg-slate-900 text-slate-300 border-t border-slate-800">
+<footer class="mt-auto bg-[#1A1612] text-amber-100/80 border-t-2 border-amber-700/40">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
       <!-- Site Info -->
       <div class="md:col-span-2">
-        <div class="flex items-center gap-2 mb-3">
-          <img
-            src={`${base}/favicon.png`}
-            alt={`${siteConfig.site.shortName} 로고`}
-            class="w-7 h-7 object-contain"
-          />
-          <span class="font-bold text-white text-base">{siteConfig.site.name}</span>
+        <div class="flex items-center gap-2.5 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center p-1">
+            <img
+              src={`${base}/favicon.png`}
+              alt={`${siteConfig.site.shortName} 로고`}
+              class="w-6 h-6 object-contain"
+            />
+          </div>
+          <span class="font-bold text-amber-200 text-lg">{siteConfig.site.name}</span>
         </div>
-        <p class="text-sm text-slate-400 max-w-sm leading-relaxed mb-4">
+        <p class="text-sm text-amber-100/70 max-w-sm leading-relaxed mb-4">
           {siteConfig.site.description}
         </p>
-        <p class="text-xs text-slate-500">
-          호스팅: GitHub Pages (무료 호스팅) | 정적 사이트 엔진: Astro
+        <p class="text-xs text-amber-200/50">
+          호스팅: GitHub Pages | 정적 사이트 엔진: Astro
         </p>
       </div>
 
       <!-- Quick Links -->
       <div>
-        <h3 class="text-xs font-semibold text-white uppercase tracking-wider mb-3">카테고리</h3>
-        <ul class="space-y-2 text-sm text-slate-400">
+        <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3">주요 카테고리</h3>
+        <ul class="space-y-2 text-sm text-amber-100/70">
           {siteConfig.categories.primary.map((cat: string) => (
-            <li><a href={`${base}/categories/`} class="hover:text-white transition-colors">{cat}</a></li>
+            <li><a href={`${base}/categories/`} class="hover:text-amber-300 transition-colors">{cat}</a></li>
           ))}
-          <li><a href={`${base}/blog/`} class="hover:text-white transition-colors">전체 아티클 목록</a></li>
+          <li><a href={`${base}/blog/`} class="hover:text-amber-300 transition-colors">전체 아티클 목록</a></li>
         </ul>
       </div>
 
       <!-- Mandatory AdSense Policy Links -->
       <div>
-        <h3 class="text-xs font-semibold text-white uppercase tracking-wider mb-3">법적 고지 & 정책</h3>
-        <ul class="space-y-2 text-sm text-slate-400">
-          <li><a href={`${base}/about/`} class="hover:text-white transition-colors">블로그 소개 (About)</a></li>
-          <li><a href={`${base}/privacy-policy/`} class="hover:text-white transition-colors">개인정보처리방침 (Privacy)</a></li>
-          <li><a href={`${base}/terms/`} class="hover:text-white transition-colors">이용약관 (Terms)</a></li>
-          <li><a href={`${base}/contact/`} class="hover:text-white transition-colors">문의 및 피드백 (Contact)</a></li>
+        <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3">안내 & 정책</h3>
+        <ul class="space-y-2 text-sm text-amber-100/70">
+          <li><a href={`${base}/about/`} class="hover:text-amber-300 transition-colors">블로그 소개 (About)</a></li>
+          <li><a href={`${base}/privacy-policy/`} class="hover:text-amber-300 transition-colors">개인정보처리방침 (Privacy)</a></li>
+          <li><a href={`${base}/terms/`} class="hover:text-amber-300 transition-colors">이용약관 (Terms)</a></li>
+          <li><a href={`${base}/contact/`} class="hover:text-amber-300 transition-colors">문의 및 피드백 (Contact)</a></li>
         </ul>
       </div>
     </div>
 
     <!-- Copyright & Disclaimer -->
-    <div class="pt-8 mt-8 border-t border-slate-800 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="pt-8 mt-8 border-t border-amber-900/60 text-xs text-amber-200/50 flex flex-col sm:flex-row items-center justify-between gap-4">
       <p>© {currentYear} {siteConfig.site.author || siteConfig.site.shortName}. All rights reserved.</p>
-      <p class="text-slate-500 text-center sm:text-right">
-        본 사이트의 콘텐츠는 정보 제공을 목적으로 하며, 구글 애드센스 광고를 포함하고 있습니다.
+      <p class="text-amber-200/50 text-center sm:text-right">
+        본 사이트의 콘텐츠는 6070 어르신들의 알 권리와 복지 향상을 위한 정보 제공을 목적으로 합니다.
       </p>
     </div>
   </div>

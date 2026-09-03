@@ -10,8 +10,8 @@ export async function getStaticPaths() {
 
 export async function GET({ props }: any) {
   const { post } = props;
-  const title = post.data.title || '앱시안 블로그 포스팅';
-  const category = post.data.category || 'AI & 생산성';
+  const title = post.data.title || '골든라이프 블로그 포스팅';
+  const category = post.data.category || '정부지원금 & 복지';
   const readingTime = post.data.readingTime || '5 min read';
   const pubDate = new Intl.DateTimeFormat('ko-KR', {
     year: 'numeric',
@@ -52,13 +52,13 @@ export async function GET({ props }: any) {
 <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="50%" stop-color="#1e293b" />
-      <stop offset="100%" stop-color="#090d16" />
+      <stop offset="0%" stop-color="#1c160e" />
+      <stop offset="50%" stop-color="#2a2014" />
+      <stop offset="100%" stop-color="#120e09" />
     </linearGradient>
-    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#2563eb" />
-      <stop offset="100%" stop-color="#38bdf8" />
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#b8860b" />
+      <stop offset="100%" stop-color="#fbbf24" />
     </linearGradient>
     <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#ffffff" stop-opacity="0.08" />
@@ -69,36 +69,36 @@ export async function GET({ props }: any) {
   <!-- Background -->
   <rect width="1200" height="630" fill="url(#bgGrad)" />
 
-  <!-- Ambient Glow -->
-  <circle cx="1050" cy="150" r="350" fill="#2563eb" opacity="0.18" filter="blur(80px)" />
-  <circle cx="150" cy="500" r="300" fill="#0ea5e9" opacity="0.12" filter="blur(70px)" />
+  <!-- Ambient Glow (Warm Gold) -->
+  <circle cx="1050" cy="150" r="350" fill="#d97706" opacity="0.25" filter="blur(80px)" />
+  <circle cx="150" cy="500" r="300" fill="#f59e0b" opacity="0.18" filter="blur(70px)" />
 
-  <!-- Inner Glass Card -->
-  <rect x="50" y="50" width="1100" height="530" rx="32" fill="url(#cardGrad)" stroke="#ffffff" stroke-opacity="0.12" stroke-width="1.5" />
+  <!-- Inner Glass Card with subtle golden border -->
+  <rect x="50" y="50" width="1100" height="530" rx="32" fill="url(#cardGrad)" stroke="#fef3c7" stroke-opacity="0.18" stroke-width="1.5" />
 
   <!-- Brand Header -->
   <g transform="translate(80, 100)">
-    <rect x="0" y="0" width="38" height="38" rx="10" fill="#2563eb" />
-    <text x="50" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" letter-spacing="-0.5">앱시안(absian)</text>
-    <text x="175" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" fill="#94a3b8">AI &amp; Tech Insights</text>
+    <rect x="0" y="0" width="40" height="40" rx="12" fill="url(#goldGrad)" />
+    <text x="54" y="27" font-family="-apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif" font-size="22" font-weight="900" fill="#ffffff" letter-spacing="-0.5">골든라이프 (GoldenLife)</text>
+    <text x="310" y="27" font-family="-apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif" font-size="16" fill="#fde68a">시니어 복지·연금·건강 백과</text>
   </g>
 
   <!-- Category & Read Time Badge -->
   <g transform="translate(80, 180)">
-    <rect x="0" y="0" width="${escapeXml(category).length * 18 + 36}" height="36" rx="18" fill="#1e3a8a" stroke="#3b82f6" stroke-width="1" />
-    <text x="18" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="600" fill="#93c5fd">${escapeXml(category)}</text>
-    <text x="${escapeXml(category).length * 18 + 50}" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" fill="#64748b">• ${escapeXml(readingTime)}</text>
+    <rect x="0" y="0" width="${escapeXml(category).length * 20 + 40}" height="38" rx="19" fill="#451a03" stroke="#f59e0b" stroke-width="1.5" />
+    <text x="20" y="24" font-family="-apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif" font-size="15" font-weight="700" fill="#fef3c7">${escapeXml(category)}</text>
+    <text x="${escapeXml(category).length * 20 + 54}" y="24" font-family="-apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif" font-size="15" fill="#fde68a">• ${escapeXml(readingTime)}</text>
   </g>
 
   <!-- Post Title -->
-  <text x="80" y="300" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Pretendard', sans-serif" font-size="44" font-weight="800" fill="#ffffff" letter-spacing="-1" line-height="1.3">
+  <text x="80" y="300" font-family="-apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif" font-size="44" font-weight="800" fill="#ffffff" letter-spacing="-1" line-height="1.3">
     ${titleSvgText}
   </text>
 
   <!-- Footer Info -->
   <g transform="translate(80, 520)">
-    <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" fill="#64748b">발행일: ${pubDate} | absianp.github.io</text>
-    <text x="940" y="0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="bold" fill="#38bdf8" text-anchor="end">읽으러 가기 →</text>
+    <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif" font-size="16" fill="#fef3c7" opacity="0.8">발행일: ${pubDate} | goldianpark.github.io</text>
+    <text x="940" y="0" font-family="-apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif" font-size="16" font-weight="bold" fill="#fbbf24" text-anchor="end">자세히 보러 가기 →</text>
   </g>
 </svg>
 `.trim();

@@ -2,6 +2,7 @@
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import SEO from '../components/SEO.astro';
+import siteConfig from '../config/site';
 import '../styles/global.css';
 
 export interface Props {
@@ -19,12 +20,12 @@ export interface Props {
 
 const {
   title,
-  description = 'AI 생산성 도구, 개발 팁, 스마트 부업 및 테크 트렌드 전문 블로그',
+  description = siteConfig.site.description || '6070 어르신을 위한 정부 지원금, 은퇴 연금, 100세 건강 실전 가이드',
   image,
   article,
   pubDate,
   updatedDate,
-  author,
+  author = siteConfig.site.author || '골든라이프 편집팀',
   canonicalURL,
   faqs,
   tags,
@@ -32,8 +33,15 @@ const {
 ---
 
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" class="senior-font-md">
   <head>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      rel="stylesheet"
+      as="style"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.min.css"
+    />
     <SEO
       title={title}
       description={description}
@@ -47,7 +55,7 @@ const {
       tags={tags}
     />
   </head>
-  <body class="flex flex-col min-h-screen bg-slate-50 text-slate-900">
+  <body class="flex flex-col min-h-screen bg-[#FAF8F5] text-slate-900 transition-colors duration-200">
     <Header />
     <main class="flex-grow">
       <slot />

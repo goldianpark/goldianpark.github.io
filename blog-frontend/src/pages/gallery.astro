@@ -5,7 +5,7 @@ import AdSense from '../components/AdSense.astro';
 import { getCollection } from 'astro:content';
 import { getPostSummary } from '../utils/summary';
 import { getDynamicCategories } from '../utils/categories';
-import { getCategoryName, getCategorySlug } from '../utils/slug';
+import siteConfig from '../config/site';
 
 const allPosts = await getCollection('blog', ({ data }) => {
   return import.meta.env.PROD ? !data.draft : true;
@@ -17,20 +17,20 @@ const categories = ['전체', ...allCategories.map(c => c.name)];
 ---
 
 <BaseLayout
-  title="썸네일 갤러리 모아보기 | 앱시안(absian)"
-  description="앱시안(absian)의 모든 테크 및 실전 자동화 가이드를 카드 썸네일 중심의 컴팩트 갤러리로 한눈에 빠르게 탐색해보세요."
+  title={`썸네일 갤러리 모아보기 | ${siteConfig.site.name}`}
+  description={`${siteConfig.site.name}의 모든 시니어 복지·연금·건강 가이드를 한눈에 카드 썸네일로 빠르게 탐색해보세요.`}
 >
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <!-- Header Section -->
     <div class="text-center max-w-3xl mx-auto mb-10">
-      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold mb-3 border border-blue-100">
-        <span>🖼️ Visual Archive</span>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-3 border border-amber-300 shadow-2xs">
+        <span>🖼️ 한눈에 보는 시니어 갤러리</span>
       </div>
-      <h1 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+      <h1 class="text-3xl sm:text-5xl font-black text-slate-950 tracking-tight">
         썸네일 갤러리 모아보기
       </h1>
-      <p class="text-slate-600 text-sm sm:text-base mt-2 leading-relaxed">
-        글의 핵심을 담은 카드 썸네일을 통해 {sortedPosts.length}개의 아티클을 한눈에 빠르고 직관적으로 둘러보세요.
+      <p class="text-slate-700 text-sm sm:text-base mt-2 leading-relaxed">
+        글의 핵심을 담은 큰 카드 썸네일을 통해 {sortedPosts.length}편의 시니어 알짜 정보를 직관적으로 둘러보세요.
       </p>
 
       <!-- Category Filter Pills -->
@@ -38,10 +38,10 @@ const categories = ['전체', ...allCategories.map(c => c.name)];
         {categories.map((cat, idx) => (
           <button
             data-category={cat}
-            class={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all cursor-pointer ${
+            class={`px-4 py-2 text-xs sm:text-sm font-bold rounded-full transition-all cursor-pointer ${
               idx === 0
-                ? 'bg-blue-600 text-white shadow-xs filter-btn-active'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                ? 'bg-amber-700 text-white shadow-xs filter-btn-active'
+                : 'bg-white text-slate-700 hover:bg-amber-50 hover:text-amber-900 border border-amber-200/90'
             }`}
           >
             {cat === '전체' ? `전체 (${sortedPosts.length})` : cat}
@@ -58,7 +58,7 @@ const categories = ['전체', ...allCategories.map(c => c.name)];
       class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 my-10"
     >
       {sortedPosts.map(post => (
-        <div class="gallery-item" data-category={getCategoryName(getCategorySlug(post.data.category))}>
+        <div data-post-category={post.data.category} class="gallery-item transition-all duration-300">
           <ThumbnailCard
             title={post.data.title}
             summary={getPostSummary(post)}
@@ -74,49 +74,48 @@ const categories = ['전체', ...allCategories.map(c => c.name)];
     </div>
 
     <!-- Empty Filter Result Message -->
-    <div id="no-results" class="hidden text-center py-20 bg-white rounded-2xl border border-slate-200">
-      <p class="text-slate-500 text-sm">해당 카테고리의 글이 없습니다.</p>
+    <div id="no-results-msg" class="hidden text-center py-16 bg-white rounded-2xl border-2 border-dashed border-amber-200">
+      <p class="text-slate-500 text-sm">해당 카테고리에 등록된 아티클이 없습니다.</p>
     </div>
 
     <AdSense slotId="4567890123" type="bottom-banner" />
   </div>
 
-  <!-- Realtime Filter Script -->
   <script is:inline>
-    (function () {
-      const buttons = document.querySelectorAll('#filter-buttons button');
-      const items = document.querySelectorAll('.gallery-item');
-      const noResults = document.getElementById('no-results');
+    const filterButtons = document.querySelectorAll('#filter-buttons button');
+    const galleryItems = document.querySelectorAll('.gallery-item');
+    const noResults = document.getElementById('no-results-msg');
 
-      buttons.forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const selected = btn.getAttribute('data-category');
+    filterButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const category = button.getAttribute('data-category');
 
-          // Style active button
-          buttons.forEach((b) => {
-            b.classList.remove('bg-blue-600', 'text-white', 'shadow-xs', 'filter-btn-active');
-            b.classList.add('bg-white', 'text-slate-600', 'border', 'border-slate-200/80');
-          });
-          btn.classList.add('bg-blue-600', 'text-white', 'shadow-xs', 'filter-btn-active');
-          btn.classList.remove('bg-white', 'text-slate-600', 'border', 'border-slate-200/80');
+        filterButtons.forEach(btn => {
+          btn.classList.remove('bg-amber-700', 'text-white', 'shadow-xs', 'filter-btn-active');
+          btn.classList.add('bg-white', 'text-slate-700', 'hover:bg-amber-50', 'hover:text-amber-900', 'border', 'border-amber-200/90');
+        });
+        button.classList.add('bg-amber-700', 'text-white', 'shadow-xs', 'filter-btn-active');
+        button.classList.remove('bg-white', 'text-slate-700', 'hover:bg-amber-50', 'hover:text-amber-900', 'border', 'border-amber-200/90');
 
-          // Filter items
-          let visibleCount = 0;
-          items.forEach((item) => {
-            const itemCat = item.getAttribute('data-category');
-            if (selected === '전체' || itemCat.includes(selected)) {
-              item.style.display = '';
-              visibleCount++;
-            } else {
-              item.style.display = 'none';
-            }
-          });
-
-          if (noResults) {
-            noResults.classList.toggle('hidden', visibleCount > 0);
+        let visibleCount = 0;
+        galleryItems.forEach(item => {
+          const itemCat = item.getAttribute('data-post-category');
+          if (category === '전체' || itemCat === category) {
+            item.classList.remove('hidden');
+            visibleCount++;
+          } else {
+            item.classList.add('hidden');
           }
         });
+
+        if (noResults) {
+          if (visibleCount === 0) {
+            noResults.classList.remove('hidden');
+          } else {
+            noResults.classList.add('hidden');
+          }
+        }
       });
-    })();
+    });
   </script>
 </BaseLayout>

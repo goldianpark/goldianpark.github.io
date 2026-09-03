@@ -1,0 +1,103 @@
+---
+export interface SummaryCardItem {
+  badge: string;
+  title: string;
+  desc: string;
+  icon?: string;
+}
+
+export interface Props {
+  cards?: SummaryCardItem[];
+  faqs?: Array<{ question: string; answer: string }>;
+  description?: string;
+}
+
+const { cards, faqs = [], description = '' } = Astro.props;
+
+// 기본 3장 카드 데이터 구성 (명시적 cards -> FAQ 추출 -> 기본 요약)
+let displayCards: SummaryCardItem[] = [];
+
+if (cards && cards.length >= 3) {
+  displayCards = cards.slice(0, 3);
+} else if (faqs && faqs.length >= 3) {
+  const defaultBadges = ['1. 지원 대상 & 자격', '2. 지원 금액 & 혜택', '3. 신청 방법 & 주의점'];
+  const defaultIcons = ['🎯', '💰', '📝'];
+  displayCards = faqs.slice(0, 3).map((faq, idx) => ({
+    badge: defaultBadges[idx],
+    icon: defaultIcons[idx],
+    title: faq.question.replace(/^[0-9.\s]+/, ''),
+    desc: faq.answer,
+  }));
+} else {
+  // 폴백 3장 요약 카드
+  displayCards = [
+    {
+      badge: '1. 핵심 체크',
+      icon: '🎯',
+      title: '누가 혜택을 받나요?',
+      desc: description || '자격 조건과 대상자 기준을 꼼꼼히 확인하세요.',
+    },
+    {
+      badge: '2. 금액 & 혜택',
+      icon: '💰',
+      title: '얼마나 지원되나요?',
+      desc: '의료비, 연금, 감면 혜택 등 놓치기 쉬운 지원금을 정리했습니다.',
+    },
+    {
+      badge: '3. 신청 안내',
+      icon: '📝',
+      title: '어디서 신청하나요?',
+      desc: '주민센터 및 공식 온라인 포털을 통해 간편하게 신청할 수 있습니다.',
+    },
+  ];
+}
+---
+
+<section class="my-8 p-6 sm:p-7 bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-yellow-50/80 border-2 border-amber-300/80 rounded-2xl shadow-sm">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 pb-4 border-b border-amber-200/80">
+    <div class="flex items-center gap-2.5">
+      <span class="text-2xl filter drop-shadow-xs">💡</span>
+      <div>
+        <h2 class="text-lg sm:text-xl font-extrabold text-amber-950 tracking-tight">
+          바쁜 어르신을 위한 3분 핵심 요약 카드
+        </h2>
+        <p class="text-xs sm:text-sm text-amber-800/90 mt-0.5">
+          본문을 읽기 전 가장 중요한 3가지 핵심 포인트를 먼저 확인하세요.
+        </p>
+      </div>
+    </div>
+    <span class="inline-flex items-center self-start sm:self-auto px-3 py-1 rounded-full text-xs font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
+      ⚡ 3줄 요약 완료
+    </span>
+  </div>
+
+  <!-- 3장 카드 그리드 -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    {displayCards.map((card, idx) => (
+      <div class="bg-white rounded-xl p-5 border-2 border-amber-200/90 hover:border-amber-400 hover:shadow-md transition-all flex flex-col justify-between group">
+        <div>
+          <!-- Card Top Badge -->
+          <div class="flex items-center justify-between mb-3">
+            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-100/90 text-amber-900 border border-amber-200">
+              <span class="text-sm">{card.icon || (idx === 0 ? '🎯' : idx === 1 ? '💰' : '📝')}</span>
+              <span>{card.badge}</span>
+            </span>
+            <span class="text-xs font-extrabold text-amber-600/70 group-hover:text-amber-600">
+              0{idx + 1}
+            </span>
+          </div>
+
+          <!-- Card Title -->
+          <h3 class="text-base sm:text-lg font-extrabold text-slate-900 leading-snug mb-2 group-hover:text-amber-800 transition-colors">
+            {card.title}
+          </h3>
+        </div>
+
+        <!-- Card Description -->
+        <p class="text-xs sm:text-sm text-slate-700 leading-relaxed bg-amber-50/40 p-3 rounded-lg border border-amber-100/80 mt-2">
+          {card.desc}
+        </p>
+      </div>
+    ))}
+  </div>
+</section>

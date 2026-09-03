@@ -1,44 +1,49 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import siteConfig from '../config/site';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <BaseLayout
-  title="블로그 소개 (About Us)"
-  description="앱시안(absian) AI & 테크 인사이트 블로그의 운영 목적, 편집 기준 및 소개입니다."
+  title={`블로그 소개 (About Us) | ${siteConfig.site.shortName}`}
+  description={`${siteConfig.site.name}의 운영 목적, 편집 원칙 및 미션 소개입니다.`}
 >
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-    <div class="bg-white p-8 sm:p-12 rounded-2xl border border-slate-200/80 shadow-sm prose prose-slate max-w-none">
-      <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight mb-6">About 앱시안(absian) AI & 테크 인사이트</h1>
+    <div class="bg-white p-8 sm:p-12 rounded-2xl border-2 border-amber-200/80 shadow-sm prose prose-slate max-w-none">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-4 border border-amber-300">
+        <span>✨ 실버 세대를 위한 든든한 등대</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight mb-6">
+        About {siteConfig.site.name}
+      </h1>
 
-      <p class="lead text-lg text-slate-600">
-        <strong>앱시안(absian) AI & 테크 인사이트</strong>는 급변하는 인공지능(AI) 시대에 개인과 개발자가 생산성을 극대화하고 새로운 디지털 기회를 포착할 수 있도록 실용적이고 신뢰할 수 있는 정보를 제공하는 테크 전문 미디어입니다.
+      <p class="lead text-lg sm:text-xl text-slate-700 leading-relaxed">
+        <strong>골든라이프(GoldenLife)</strong>는 60~70대 시니어 어르신들과 은퇴 세대가 복잡한 행정 제도와 건강 상식을 몰라서 소중한 권리와 혜택을 놓치지 않도록, 가장 쉽고 정확하게 정보를 전달하는 실버 전문 정보 미디어입니다.
       </p>
 
       <h2>💡 우리의 미션 (Mission)</h2>
       <p>
-        복잡하고 어려운 최신 기술 트렌드를 누구나 쉽게 이해하고 바로 실무나 부업에 적용할 수 있는 형태로 재구성합니다. 단순한 뉴스 나열을 넘어 직접 테스트하고 검증한 실전 가이드와 튜토리얼을 지향합니다.
+        대한민국의 수많은 복지 정책은 <strong>'신청주의'</strong>로 운영됩니다. 즉, 내가 직접 알아보고 신청하지 않으면 국가는 1원도 챙겨주지 않습니다. 골든라이프는 어르신들의 눈높이에 맞춘 큰 글씨와 3줄 핵심 요약 카드를 통해, 어려운 행정 문서를 3분 만에 이해할 수 있는 친절한 설명서로 재구성합니다.
       </p>
 
       <h2>🎯 주요 다루는 분야</h2>
       <ul>
-        <li><strong>AI & 생산성</strong>: ChatGPT, Claude, 미드저니, 로컬 LLM 등 최신 생성형 AI 실무 활용법 및 프롬프트 가이드</li>
-        <li><strong>개발 & 테크</strong>: 파이썬 자동화 스크립트, 웹 기술, 클라우드 프리티어 활용, 깃허브 실전 팁</li>
-        <li><strong>스마트 부업 & 재테크</strong>: 노코드 툴을 활용한 디지털 부업 구조화, 블로그 및 웹사이트 수익화 전략</li>
+        <li><strong>정부지원금 & 복지</strong>: 만 65세 이상 혜택 50가지, 기초연금 소득인정액 계산법, 병원비·임플란트 건강보험 감면, 통신요금 할인</li>
+        <li><strong>연금 & 절세 상식</strong>: 국민연금 조기수령 vs 연기수령 손익분기점, 주택연금 가입 요령, 건강보험 피부양자 탈락 방지, 증여·상속세 절세 비법</li>
+        <li><strong>시니어 건강 & 일상</strong>: 무릎 퇴행성 관절염 예방 운동, 치매 예방 생활 수칙, 고혈압·당뇨 식단 관리, 정부 인공관절 수술비 지원</li>
       </ul>
 
-      <h2>✍️ 콘텐츠 품질 및 편집 원칙 (Editorial Guidelines)</h2>
-      <p>
-        앱시안(absian)는 정보의 정확성과 가독성을 최우선으로 합니다.
-      </p>
+      <h2>✍️ 시니어 친화 편집 원칙 (Editorial Guidelines)</h2>
       <ul>
-        <li><strong>직접 검증</strong>: 다루는 툴과 코드는 사전에 직접 테스트하여 실행 가능성을 확인합니다.</li>
-        <li><strong>단계별 안내</strong>: 초보자도 따라 할 수 있도록 체계적인 목차와 예시를 포함합니다.</li>
-        <li><strong>정기적 업데이트</strong>: 기술 변경 사항을 반영하여 정기적으로 아티클을 갱신합니다.</li>
+        <li><strong>돋보기 없는 편안한 가독성</strong>: 어르신들의 시력을 배려하여 18~20px의 큰 글씨와 명확한 대비, 줄 간격을 기본 적용합니다.</li>
+        <li><strong>3줄 핵심 요약 카드</strong>: 긴 글을 모두 읽기 힘드신 분들을 위해 글 서두에 '대상, 금액, 신청법'을 3장의 카드로 요약합니다.</li>
+        <li><strong>공식 출처 기반 팩트 체크</strong>: 보건복지부, 국민연금공단, 국민건강보험공단 등 국가 공식 고시 자료만을 바탕으로 철저히 검증합니다.</li>
       </ul>
 
-      <h2>📬 문의 및 협업</h2>
+      <h2>📬 독자 문의 및 정정 요청</h2>
       <p>
-        피드백, 정정 요청, 콘텐츠 제휴 등은 언제든지 <a href="/contact" class="text-blue-600 font-semibold underline">문의 페이지</a>를 통해 남겨주시기 바랍니다.
+        제도 변경 사항에 대한 제보, 오탈자 정정 요청, 콘텐츠 제휴 등은 언제든지 <a href={`${base}/contact/`} class="text-amber-800 font-bold underline">문의 페이지</a>를 통해 남겨주시면 정성껏 검토하겠습니다.
       </p>
     </div>
   </div>
