@@ -1,0 +1,35 @@
+{
+  "blogId": "goldenlife",
+  "site": {
+    "name": "골든라이프(GoldenLife) - 시니어 복지·연금·건강 백과",
+    "shortName": "골든라이프",
+    "slogan": "6070 어르신을 위한 정부 지원금, 은퇴 연금, 100세 건강 실전 가이드",
+    "description": "기초연금 및 65세 이상 복지 혜택, 국민·주택연금 절세 상식, 시니어 관절·혈관 건강 정보를 알기 쉽게 전하는 실버 전문 매거진",
+    "url": "https://absianp.github.io/goldenlife-blog",
+    "basePath": "/goldenlife-blog",
+    "author": "골든라이프 편집팀"
+  },
+  "categories": {
+    "primary": ["정부지원금 & 복지", "연금 & 절세 상식", "시니어 건강 & 일상"],
+    "topLimit": 3
+  },
+  "seo": {
+    "naverVerification": "",
+    "googleVerification": "",
+    "gaId": ""
+  },
+  "monetization": {
+    "adsenseClientId": "",
+    "adfitUnitId": "",
+    "coupangPartnersId": "",
+    "gumroadUrl": ""
+  },
+  "telegram": {
+    "botUsername": ""
+  },
+  "ai": {
+    "provider": "gemini",
+    "model": "gemini-2.5-flash",
+    "tone": "어르신들이 읽기 편안하도록 크고 명확한 글씨, 친절하고 정중하며 신뢰도 높은 설명조"
+  }
+}
