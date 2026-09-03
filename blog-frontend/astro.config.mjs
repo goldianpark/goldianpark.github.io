@@ -1,8 +1,8 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  site: 'https://absianp.github.io/goldenlife-blog',
-  base: '/goldenlife-blog',
+  site: 'https://goldianpark.github.io',
+  base: '/',
   trailingSlash: 'always',
   build: {
     format: 'directory',
