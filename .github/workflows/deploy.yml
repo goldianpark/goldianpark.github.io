@@ -30,7 +30,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Detect deployed article
         id: detect_article
@@ -40,22 +40,26 @@ jobs:
 
           try:
               cmd_head = ['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD']
-              files = subprocess.check_output(cmd_head, text=True).splitlines()
+              head_files = subprocess.check_output(cmd_head, text=True).splitlines()
           except Exception:
-              files = []
+              head_files = []
 
-          md_files = [f.strip() for f in files if f.strip().startswith('blog-frontend/src/content/blog/') and f.strip().endswith('.md')]
+          md_in_head = [f.strip() for f in head_files if f.strip().startswith('blog-frontend/src/content/blog/') and f.strip().endswith('.md')]
 
-          is_new = 'true' if md_files else 'false'
-          target_file = md_files[0] if md_files else None
+          is_new = 'false'
+          target_file = None
 
-          if not target_file:
+          if md_in_head:
+              is_new = 'true'
+              target_file = md_in_head[0]
+          else:
               try:
-                  cmd_latest = ['git', 'log', '-n', '1', '--name-only', '--pretty=', '--', 'blog-frontend/src/content/blog/']
-                  latest_output = subprocess.check_output(cmd_latest, text=True).strip().splitlines()
-                  for f in latest_output:
-                      if f.strip().startswith('blog-frontend/src/content/blog/') and f.strip().endswith('.md'):
-                          target_file = f.strip()
+                  cmd_latest = ['git', 'log', '-n', '1', '--name-only', '--diff-filter=A', '--pretty=', '--', 'blog-frontend/src/content/blog/*.md']
+                  out = subprocess.check_output(cmd_latest, text=True).strip().splitlines()
+                  for line in out:
+                      f = line.strip()
+                      if f.startswith('blog-frontend/src/content/blog/') and f.endswith('.md'):
+                          target_file = f
                           break
               except Exception:
                   pass
