@@ -53,20 +53,20 @@ if (cards && cards.length >= 3) {
 }
 ---
 
-<section class="my-8 p-6 sm:p-7 bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-yellow-50/80 border-2 border-amber-300/80 rounded-2xl shadow-sm">
+<section class="summary-cards-container my-8 p-6 sm:p-7 bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-yellow-50/80 border-2 border-amber-300/80 rounded-2xl shadow-sm">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 pb-4 border-b border-amber-200/80">
     <div class="flex items-center gap-2.5">
       <span class="text-2xl filter drop-shadow-xs">💡</span>
       <div>
-        <h2 class="text-lg sm:text-xl font-extrabold text-amber-950 tracking-tight">
+        <h2 class="summary-header-title text-lg sm:text-xl font-extrabold text-amber-950 tracking-tight">
           바쁜 어르신을 위한 3분 핵심 요약 카드
         </h2>
-        <p class="text-xs sm:text-sm text-amber-800/90 mt-0.5">
+        <p class="summary-header-desc text-xs sm:text-sm text-amber-800/90 mt-0.5">
           본문을 읽기 전 가장 중요한 3가지 핵심 포인트를 먼저 확인하세요.
         </p>
       </div>
     </div>
-    <span class="inline-flex items-center self-start sm:self-auto px-3 py-1 rounded-full text-xs font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
+    <span class="inline-flex items-center self-start sm:self-auto px-3 py-1 rounded-full text-xs font-bold bg-amber-200/80 text-amber-900 border border-amber-300 shadow-2xs">
       ⚡ 3줄 요약 완료
     </span>
   </div>
@@ -88,13 +88,13 @@ if (cards && cards.length >= 3) {
           </div>
 
           <!-- Card Title -->
-          <h3 class="text-base sm:text-lg font-extrabold text-slate-900 leading-snug mb-2 group-hover:text-amber-800 transition-colors">
+          <h3 class="summary-card-title text-base sm:text-lg font-extrabold text-slate-900 leading-snug mb-2 group-hover:text-amber-800 transition-colors">
             {card.title}
           </h3>
         </div>
 
         <!-- Card Description -->
-        <p class="text-xs sm:text-sm text-slate-700 leading-relaxed bg-amber-50/40 p-3 rounded-lg border border-amber-100/80 mt-2">
+        <p class="summary-card-desc text-xs sm:text-sm text-slate-700 leading-relaxed bg-amber-50/40 p-3 rounded-lg border border-amber-100/80 mt-2">
           {card.desc}
         </p>
       </div>

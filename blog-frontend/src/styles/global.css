@@ -16,20 +16,69 @@
   }
 }
 
-/* Senior Dynamic Font Sizing Utility Classes */
+/* ==========================================================
+   Senior Dynamic Font Sizing Utility Classes
+   (본문 + 3분 요약 카드 + 목차 통합 폰트 크기 동기화)
+   ========================================================== */
+
+/* 1. 보통 (Standard: 본문 17px, 요약제목 16px, 요약설명 14px, 목차 14px) */
 .senior-font-sm .prose {
   font-size: 1.0625rem !important; /* 17px */
   line-height: 1.8 !important;
 }
-
-.senior-font-md .prose {
-  font-size: 1.25rem !important; /* 20px - Default Senior Comfort */
-  line-height: 1.95 !important;
+.senior-font-sm .summary-card-title {
+  font-size: 1rem !important; /* 16px */
+  line-height: 1.4 !important;
+}
+.senior-font-sm .summary-card-desc {
+  font-size: 0.875rem !important; /* 14px */
+  line-height: 1.65 !important;
+}
+.senior-font-sm .toc-link {
+  font-size: 0.875rem !important; /* 14px */
+}
+.senior-font-sm .toc-header-title {
+  font-size: 0.9375rem !important; /* 15px */
 }
 
+/* 2. 크게 (Senior Recommended - 기본값: 본문 20px, 요약제목 19px, 요약설명 16px, 목차 16px) */
+.senior-font-md .prose {
+  font-size: 1.25rem !important; /* 20px */
+  line-height: 1.95 !important;
+}
+.senior-font-md .summary-card-title {
+  font-size: 1.1875rem !important; /* 19px */
+  line-height: 1.45 !important;
+}
+.senior-font-md .summary-card-desc {
+  font-size: 1rem !important; /* 16px */
+  line-height: 1.75 !important;
+}
+.senior-font-md .toc-link {
+  font-size: 1rem !important; /* 16px */
+}
+.senior-font-md .toc-header-title {
+  font-size: 1.0625rem !important; /* 17px */
+}
+
+/* 3. 아주 크게 (Senior Large - 최고 가독성: 본문 23px, 요약제목 22px, 요약설명 19px, 목차 19px) */
 .senior-font-lg .prose {
-  font-size: 1.4375rem !important; /* 23px - Maximum Senior Readability */
+  font-size: 1.4375rem !important; /* 23px */
   line-height: 2.05 !important;
+}
+.senior-font-lg .summary-card-title {
+  font-size: 1.375rem !important; /* 22px */
+  line-height: 1.5 !important;
+}
+.senior-font-lg .summary-card-desc {
+  font-size: 1.1875rem !important; /* 19px */
+  line-height: 1.85 !important;
+}
+.senior-font-lg .toc-link {
+  font-size: 1.1875rem !important; /* 19px */
+}
+.senior-font-lg .toc-header-title {
+  font-size: 1.25rem !important; /* 20px */
 }
 
 /* Custom Ad Container Styling with warm golden accent */

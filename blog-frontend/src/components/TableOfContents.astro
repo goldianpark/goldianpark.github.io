@@ -10,24 +10,48 @@ const filteredHeadings = headings.filter(h => h.depth === 2 || h.depth === 3);
 ---
 
 {filteredHeadings.length > 0 && (
-  <nav class="my-6 p-5 sm:p-6 bg-amber-50/70 border-2 border-amber-200/80 rounded-2xl shadow-2xs">
-    <div class="flex items-center gap-2 font-bold text-amber-950 text-sm sm:text-base mb-3.5">
-      <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
-      </svg>
-      <span>📑 이 글의 핵심 목차</span>
-    </div>
-    <ul class="space-y-2 text-xs sm:text-sm text-slate-700">
-      {filteredHeadings.map(h => (
-        <li class={h.depth === 3 ? 'ml-4 list-disc text-slate-600' : 'font-bold'}>
-          <a
-            href={`#${h.slug}`}
-            class="hover:text-amber-800 hover:underline transition-colors block py-0.5"
-          >
-            {h.text}
-          </a>
-        </li>
-      ))}
-    </ul>
+  <nav class="toc-container my-6">
+    <details class="group bg-amber-50/80 border-2 border-amber-200/90 rounded-2xl shadow-2xs overflow-hidden transition-all duration-200">
+      <!-- Accordion Header (클릭 시 목차 펼치기 / 접어두기) -->
+      <summary class="flex items-center justify-between p-4 sm:px-6 cursor-pointer select-none hover:bg-amber-100/70 transition-colors list-none">
+        <div class="flex items-center gap-2.5 font-bold text-amber-950 text-sm sm:text-base">
+          <svg class="w-5 h-5 text-amber-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h7" />
+          </svg>
+          <span class="toc-header-title font-black">📑 이 글의 핵심 목차</span>
+          <span class="text-xs font-bold text-amber-800/80 bg-amber-200/70 px-2.5 py-0.5 rounded-full">
+            총 {filteredHeadings.length}개 섹션
+          </span>
+        </div>
+
+        <!-- Toggle Indicator Button -->
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          <span class="group-open:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black text-amber-900 bg-amber-200/90 border border-amber-300 shadow-2xs hover:bg-amber-300 transition-colors">
+            <span>목차 펼쳐보기</span>
+            <span class="text-xs">▼</span>
+          </span>
+          <span class="hidden group-open:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black text-white bg-amber-700 border border-amber-800 shadow-2xs hover:bg-amber-800 transition-colors">
+            <span>목차 접어두기</span>
+            <span class="text-xs">▲</span>
+          </span>
+        </div>
+      </summary>
+
+      <!-- Accordion Body (펼쳤을 때 세부 목차 노출) -->
+      <div class="p-5 sm:p-6 pt-3 border-t border-amber-200/80 bg-white/80">
+        <ul class="space-y-2 text-slate-700">
+          {filteredHeadings.map(h => (
+            <li class={h.depth === 3 ? 'ml-4 list-disc text-slate-600' : 'font-bold'}>
+              <a
+                href={`#${h.slug}`}
+                class="toc-link hover:text-amber-800 hover:underline transition-colors block py-0.5 text-slate-800"
+              >
+                {h.text}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </details>
   </nav>
 )}
