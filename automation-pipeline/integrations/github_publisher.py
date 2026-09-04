@@ -149,6 +149,7 @@ class GitHubPublisher:
 
         if self.auto_commit:
             try:
+                subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=self.repo_root, check=False)
                 if is_renamed:
                     subprocess.run(["git", "add", "-A"], cwd=self.repo_root, check=False)
                     commit_msg = f"fix(blog): rename/update post from {slug} to {final_slug}"
@@ -158,20 +159,40 @@ class GitHubPublisher:
 
                 subprocess.run(["git", "commit", "-m", commit_msg], cwd=self.repo_root, check=False)
                 if self.auto_push:
-                    subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, check=False)
+                    push_res = subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, capture_output=True, text=True)
+                    if push_res.returncode != 0:
+                        print(f"⚠️ git push 충돌 감지, rebase 후 재시도: {push_res.stderr.strip()}")
+                        subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=self.repo_root, check=False)
+                        subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, check=False)
             except Exception as e:
                 print(f"[GitHubPublisher] Git 작업 중 알림: {e}")
 
         return new_filepath, final_slug
 
     def _git_commit_and_push(self, filepath: str, title: str):
-        """Git 커밋 및 Push 실행"""
+        """Git 커밋 및 Push 실행 (충돌 방지 rebase 포함)"""
         try:
+            # 1. 원격 변경사항 사전 병합
+            subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=self.repo_root, check=False)
+            
+            # 2. 파일 추가 및 커밋
             subprocess.run(["git", "add", filepath], cwd=self.repo_root, check=False)
             commit_msg = f"feat(blog): publish new post - {title[:30]}"
             subprocess.run(["git", "commit", "-m", commit_msg], cwd=self.repo_root, check=False)
+            
+            # 3. 원격 Push 및 실패 시 자동 재시도
             if self.auto_push:
                 print("🚀 GitHub 원격 저장소로 Push 실행 중...")
-                subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, check=False)
+                push_res = subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, capture_output=True, text=True)
+                if push_res.returncode != 0:
+                    print(f"⚠️ git push 거부 감지, 원격 rebase 후 재시도: {push_res.stderr.strip()}")
+                    subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=self.repo_root, check=False)
+                    push_res2 = subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, capture_output=True, text=True)
+                    if push_res2.returncode == 0:
+                        print("✅ rebase 후 GitHub 원격 Push 성공!")
+                    else:
+                        print(f"❌ 최종 GitHub Push 실패: {push_res2.stderr.strip()}")
+                else:
+                    print("✅ GitHub 원격 Push 성공!")
         except Exception as e:
             print(f"[GitHubPublisher] Git 작업 중 알림: {e}")
