@@ -22,16 +22,70 @@ jobs:
   build:
     name: Build Astro Static Site
     runs-on: ubuntu-latest
+    outputs:
+      article_title: ${{ steps.detect_article.outputs.article_title }}
+      article_url: ${{ steps.detect_article.outputs.article_url }}
+      is_new_post: ${{ steps.detect_article.outputs.is_new_post }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect deployed article
+        id: detect_article
+        run: |
+          python3 -c "
+          import os, re, subprocess
+
+          try:
+              cmd_head = ['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD']
+              files = subprocess.check_output(cmd_head, text=True).splitlines()
+          except Exception:
+              files = []
+
+          md_files = [f.strip() for f in files if f.strip().startswith('blog-frontend/src/content/blog/') and f.strip().endswith('.md')]
+
+          is_new = 'true' if md_files else 'false'
+          target_file = md_files[0] if md_files else None
+
+          if not target_file:
+              try:
+                  cmd_latest = ['git', 'log', '-n', '1', '--name-only', '--pretty=', '--', 'blog-frontend/src/content/blog/']
+                  latest_output = subprocess.check_output(cmd_latest, text=True).strip().splitlines()
+                  for f in latest_output:
+                      if f.strip().startswith('blog-frontend/src/content/blog/') and f.strip().endswith('.md'):
+                          target_file = f.strip()
+                          break
+              except Exception:
+                  pass
+
+          title = ''
+          url = ''
+          if target_file and os.path.exists(target_file):
+              with open(target_file, 'r', encoding='utf-8') as f:
+                  content = f.read()
+                  m = re.search(r'^title:\s*[\"\'\']?(.*?)[\"\'\']?\s*$', content, re.M)
+                  if m:
+                      title = m.group(1).replace('\"', '').replace('\'', '').strip()
+              slug = os.path.splitext(os.path.basename(target_file))[0]
+              site_url = 'https://goldianpark.github.io'
+              url = f'{site_url}/blog/{slug}/'
+
+          output_file = os.environ.get('GITHUB_OUTPUT')
+          if output_file:
+              with open(output_file, 'a', encoding='utf-8') as out:
+                  out.write(f'article_title={title}\n')
+                  out.write(f'article_url={url}\n')
+                  out.write(f'is_new_post={is_new}\n')
+          "
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: 'blog-frontend/package.json'
+          cache-dependency-path: 'blog-frontend/package-lock.json'
 
       - name: Install dependencies
         run: |
@@ -64,6 +118,10 @@ jobs:
 
       - name: Notify Telegram on Success
         if: success()
+        env:
+          ARTICLE_TITLE: ${{ needs.build.outputs.article_title }}
+          ARTICLE_URL: ${{ needs.build.outputs.article_url }}
+          IS_NEW_POST: ${{ needs.build.outputs.is_new_post }}
         run: |
           if [ -z "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
             echo "⚠️ TELEGRAM_BOT_TOKEN 시크릿이 GitHub 저장소에 등록되지 않았습니다."
@@ -71,10 +129,20 @@ jobs:
             exit 0
           fi
           python3 -c "
-          import urllib.request, json
+          import urllib.request, json, os
+
           token = '${{ secrets.TELEGRAM_BOT_TOKEN }}'
           chat_id = '${{ secrets.TELEGRAM_CHAT_ID }}'
-          text = '🚀 <b>[골든라이프 GitHub Actions 배포 성공]</b>\n━━━━━━━━━━━━━━━━━━━━\n📦 <b>저장소</b>: goldianpark/goldianpark.github.io\n🌐 <b>배포 URL</b>: https://goldianpark.github.io\n✅ <i>전체 포스팅 및 웹페이지 배포가 완료되었습니다!</i>'
+          title = os.environ.get('ARTICLE_TITLE', '')
+          article_url = os.environ.get('ARTICLE_URL', '')
+          is_new = os.environ.get('IS_NEW_POST', 'false') == 'true'
+
+          article_section = ''
+          if article_url:
+              label = '📝 <b>배포된 새 글</b>' if is_new else '📌 <b>최근 발행 글</b>'
+              article_section = f'\n{label}: {title}\n🔗 <b>글 바로가기</b>: {article_url}\n'
+
+          text = f'🚀 <b>[골든라이프 GitHub Actions 배포 성공]</b>\n━━━━━━━━━━━━━━━━━━━━\n📦 <b>저장소</b>: goldianpark/goldianpark.github.io{article_section}🌐 <b>블로그 홈</b>: https://goldianpark.github.io\n━━━━━━━━━━━━━━━━━━━━\n✅ <i>웹페이지 및 포스팅 배포가 완료되었습니다!</i>'
           data = json.dumps({'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}).encode('utf-8')
           req = urllib.request.Request(f'https://api.telegram.org/bot{token}/sendMessage', data=data, headers={'Content-Type': 'application/json'})
           try:
