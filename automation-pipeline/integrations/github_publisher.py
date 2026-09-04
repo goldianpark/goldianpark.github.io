@@ -38,7 +38,7 @@ class GitHubPublisher:
 
         return f"{today_str}-{keyword_slug}"
 
-    def publish_article(self, article: Dict[str, Any]) -> str:
+    def publish_article(self, article: Dict[str, Any], pre_commit_hook: callable = None) -> str:
         """
         승인된 아티클 딕셔너리를 마크다운(.md) 파일로 저장하고 Git 커밋
         """
@@ -76,6 +76,13 @@ class GitHubPublisher:
             f.write(full_content)
 
         print(f"📄 마크다운 아티클 생성 완료: {filepath}")
+
+        # Git 커밋 전 후크 실행 (키워드 큐 상태 업데이트 등)
+        if pre_commit_hook:
+            try:
+                pre_commit_hook(slug)
+            except Exception as e:
+                print(f"⚠️ pre_commit_hook 실행 중 오류: {e}")
 
         # Git Auto Commit & Push (선택 옵션)
         if self.auto_commit:
@@ -149,7 +156,7 @@ class GitHubPublisher:
 
         if self.auto_commit:
             try:
-                subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=self.repo_root, check=False)
+                subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", "main"], cwd=self.repo_root, check=False)
                 if is_renamed:
                     subprocess.run(["git", "add", "-A"], cwd=self.repo_root, check=False)
                     commit_msg = f"fix(blog): rename/update post from {slug} to {final_slug}"
@@ -162,7 +169,7 @@ class GitHubPublisher:
                     push_res = subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, capture_output=True, text=True)
                     if push_res.returncode != 0:
                         print(f"⚠️ git push 충돌 감지, rebase 후 재시도: {push_res.stderr.strip()}")
-                        subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=self.repo_root, check=False)
+                        subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", "main"], cwd=self.repo_root, check=False)
                         subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, check=False)
             except Exception as e:
                 print(f"[GitHubPublisher] Git 작업 중 알림: {e}")
@@ -170,23 +177,27 @@ class GitHubPublisher:
         return new_filepath, final_slug
 
     def _git_commit_and_push(self, filepath: str, title: str):
-        """Git 커밋 및 Push 실행 (충돌 방지 rebase 포함)"""
+        """Git 커밋 및 Push 실행 (충돌 방지 rebase 및 autostash 포함)"""
         try:
-            # 1. 원격 변경사항 사전 병합
-            subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=self.repo_root, check=False)
-            
-            # 2. 파일 추가 및 커밋
+            # 1. 원격 변경사항 사전 병합 (autostash)
+            subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", "main"], cwd=self.repo_root, check=False)
+
+            # 2. 파일 추가 및 커밋 (글 파일 및 keywords.csv 동시 추가)
             subprocess.run(["git", "add", filepath], cwd=self.repo_root, check=False)
+            csv_path = os.path.join(self.repo_root, "automation-pipeline", "data", "keywords.csv")
+            if os.path.exists(csv_path):
+                subprocess.run(["git", "add", csv_path], cwd=self.repo_root, check=False)
+
             commit_msg = f"feat(blog): publish new post - {title[:30]}"
             subprocess.run(["git", "commit", "-m", commit_msg], cwd=self.repo_root, check=False)
-            
+
             # 3. 원격 Push 및 실패 시 자동 재시도
             if self.auto_push:
                 print("🚀 GitHub 원격 저장소로 Push 실행 중...")
                 push_res = subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, capture_output=True, text=True)
                 if push_res.returncode != 0:
                     print(f"⚠️ git push 거부 감지, 원격 rebase 후 재시도: {push_res.stderr.strip()}")
-                    subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=self.repo_root, check=False)
+                    subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", "main"], cwd=self.repo_root, check=False)
                     push_res2 = subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, capture_output=True, text=True)
                     if push_res2.returncode == 0:
                         print("✅ rebase 후 GitHub 원격 Push 성공!")

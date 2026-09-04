@@ -65,12 +65,16 @@ def run_auto_pipeline(config: dict, auto_approve: bool = True, target_category: 
 
     # 4단계: 퍼블리싱 및 배포
     print("\n🚀 [4단계: Astro 블로그 저장소에 글 게시 및 배포]")
-    saved_path = publisher.publish_article(article)
+    def on_article_saved(slug):
+        if selected_topic.get("_csv_keyword"):
+            harvester.mark_csv_keyword_published(selected_topic["_csv_keyword"], slug)
+
+    saved_path = publisher.publish_article(article, pre_commit_hook=on_article_saved)
     post_slug = os.path.splitext(os.path.basename(saved_path))[0]
     full_post_url = f"{site_url.rstrip('/')}/blog/{post_slug}/"
     print(f"🎉 성공적으로 게시되었습니다: {full_post_url}")
 
-    # 키워드 큐(keywords.csv) 상태 갱신
+    # 키워드 큐(keywords.csv) 상태 갱신 fallback
     if selected_topic.get("_csv_keyword"):
         harvester.mark_csv_keyword_published(selected_topic["_csv_keyword"], post_slug)
 
