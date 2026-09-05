@@ -96,6 +96,75 @@ class TelegramNotifier:
         return self._send_message(msg)
 
     # -------------------------------------------------------------
+    # 1-1. Gemini 3.1 Pro 심층 감수 보고서 및 HITL 승인 요청
+    # -------------------------------------------------------------
+    def send_review_report(self, draft_id: str, article: Dict[str, Any], review: Dict[str, Any]) -> bool:
+        title = article.get("title", "")
+        category = article.get("category", "")
+        reading_time = article.get("readingTime", "6 min read")
+        total_score = review.get("total_score", 0)
+        verdict = review.get("verdict", "REVISE")
+        breakdown = review.get("breakdown", {})
+        
+        acc_score = breakdown.get("topic_accuracy", 0)
+        fact_score = breakdown.get("fact_check", 0)
+        seo_score = breakdown.get("seo_quality", 0)
+        pol_score = breakdown.get("policy_safety", 0)
+        
+        char_count = review.get("char_count") or len(article.get("markdown_content", "").replace(" ", "").replace("\n", ""))
+        faqs_count = len(article.get("faqs", []))
+        
+        if verdict == "PASS":
+            verdict_badge = "✅ PASS (합격 / 발행 권장)"
+        elif verdict == "REVISE":
+            verdict_badge = "⚠️ REVISE (보완 권장)"
+        else:
+            verdict_badge = "❌ FAIL (품질 미달)"
+            
+        fact_details = review.get("fact_check_details", [])
+        fact_html = "".join([f"  • {f}\n" for f in fact_details[:3]]) if fact_details else "  • 팩트체크 이상 없음\n"
+        
+        summary_for_user = review.get("summary_for_user", "")
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+        
+        msg = f"""🧐 <b>[Gemini 3.1 Pro 심층 감수 보고서]</b> ({now_str})
+━━━━━━━━━━━━━━━━━━━━
+📌 <b>초안 ID</b>: <code>{draft_id}</code>
+📝 <b>제목</b>: <b>{title}</b>
+🏷️ <b>카테고리</b>: {category} | ⏱️ {reading_time}
+📏 <b>본문 분량</b>: <code>{char_count:,}자</code> | ❓ FAQ: <code>{faqs_count}개</code>
+
+📊 <b>종합 감수 점수: <code>{total_score}/100점</code></b>
+🏆 <b>감수 판정: {verdict_badge}</b>
+
+📈 <b>세부 평가 내역 (100점 만점)</b>:
+  • 🎯 주제 정확성: <code>{acc_score}/25점</code>
+  • 🔍 팩트체크 & 오류: <code>{fact_score}/35점</code>
+  • 📐 SEO/E-E-A-T 구조: <code>{seo_score}/25점</code>
+  • 🛡️ 애드센스 안전성: <code>{pol_score}/15점</code>
+
+🔬 <b>핵심 팩트체크 결과</b>:
+{fact_html}
+💡 <b>종합 총평</b>:
+<i>{summary_for_user}</i>
+━━━━━━━━━━━━━━━━━━━━
+⚡ <b>검토 대기 큐에 안전하게 적재되었습니다.</b>
+아래 버튼을 눌러 승인하시면 즉시 배포됩니다."""
+
+        reply_markup = {
+            "inline_keyboard": [
+                [
+                    {"text": "✅ 즉시 승인 및 발행", "callback_data": f"approve:{draft_id}"},
+                    {"text": "❌ 발행 보류", "callback_data": f"reject:{draft_id}"}
+                ],
+                [
+                    {"text": "📖 본문 초안 보기", "callback_data": f"view_draft:{draft_id}"}
+                ]
+            ]
+        }
+        return self._send_message(msg, reply_markup)
+
+    # -------------------------------------------------------------
     # 2. 새로운 글 작성 및 배포 보고
     # -------------------------------------------------------------
     def send_article_published(self, article: Dict[str, Any], inspection: Dict[str, Any], post_url: str) -> bool:

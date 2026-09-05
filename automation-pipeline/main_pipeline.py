@@ -8,8 +8,10 @@ from datetime import datetime
 # 에이전트 및 연동 모듈 로드
 from agents.keyword_harvester import KeywordHarvester
 from agents.content_writer import ContentWriter
+from agents.editorial_reviewer import EditorialReviewAgent
 from agents.policy_inspector import PolicyInspector
 from agents.performance_tracker import PerformanceTracker
+from modules.draft_queue import DraftApprovalQueue
 from integrations.github_publisher import GitHubPublisher
 from integrations.google_indexing import GoogleIndexing
 from integrations.telegram_bot import TelegramNotifier
@@ -22,7 +24,65 @@ def load_config(config_path: str = "config/config.yaml") -> dict:
     with open(abs_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-def run_auto_pipeline(config: dict, auto_approve: bool = True, target_category: str = None):
+def publish_queued_draft(config: dict, draft_id: str) -> tuple:
+    """
+    검토 대기 큐(DraftApprovalQueue)의 특정 초안을 승인하여
+    GitHub Pages에 최종 퍼블리싱하고 텔레그램 알림 및 색인 요청을 수행
+    """
+    queue = DraftApprovalQueue()
+    draft_item = queue.get_draft(draft_id)
+    if not draft_item:
+        return False, f"초안 ID '{draft_id}'를 찾을 수 없습니다."
+        
+    if draft_item.get("status") == "published":
+        existing_url = draft_item.get("published_url", "")
+        return True, f"이미 발행 완료된 글입니다: {existing_url}"
+
+    article = draft_item.get("article", {})
+    topic = draft_item.get("topic", {})
+    review = draft_item.get("review", {})
+    
+    publisher = GitHubPublisher(config)
+    indexer = GoogleIndexing(config)
+    telegram = TelegramNotifier(config)
+    site_url = config.get("site", {}).get("url", "https://goldianpark.github.io").rstrip("/")
+    
+    def on_article_saved(slug):
+        if topic.get("_csv_keyword"):
+            try:
+                harvester = KeywordHarvester(config)
+                harvester.mark_csv_keyword_published(topic["_csv_keyword"], slug)
+            except Exception:
+                pass
+
+    saved_path = publisher.publish_article(article, pre_commit_hook=on_article_saved)
+    post_slug = os.path.splitext(os.path.basename(saved_path))[0]
+    full_post_url = f"{site_url}/blog/{post_slug}/"
+    
+    # 큐 상태 갱신
+    queue.mark_published(draft_id, post_slug, full_post_url)
+    
+    # 키워드 CSV 업데이트
+    if topic.get("_csv_keyword"):
+        try:
+            harvester = KeywordHarvester(config)
+            harvester.mark_csv_keyword_published(topic["_csv_keyword"], post_slug)
+        except Exception:
+            pass
+
+    # 색인 요청 (Sitemap Ping)
+    indexer.ping_sitemap()
+    
+    # 텔레그램 발행 완료 알림
+    inspection = {
+        "score": review.get("total_score", 90),
+        "char_count": review.get("char_count") or len(article.get("markdown_content", "").replace(" ", "").replace("\n", ""))
+    }
+    telegram.send_article_published(article, inspection, full_post_url)
+    
+    return True, full_post_url
+
+def run_auto_pipeline(config: dict, auto_approve: bool = False, target_category: str = None):
     site_title = config.get("site", {}).get("title", "골든라이프(GoldenLife)")
     site_url = config.get("site", {}).get("url", "https://goldianpark.github.io")
     print("=" * 60)
@@ -33,9 +93,8 @@ def run_auto_pipeline(config: dict, auto_approve: bool = True, target_category: 
     # 0. 모듈 초기화
     harvester = KeywordHarvester(config)
     writer = ContentWriter(config)
-    inspector = PolicyInspector(config)
-    publisher = GitHubPublisher(config)
-    indexer = GoogleIndexing(config)
+    reviewer = EditorialReviewAgent(config)
+    queue = DraftApprovalQueue()
     telegram = TelegramNotifier(config)
 
     # 1단계: 키워드 발굴 & 주제 선정
@@ -54,38 +113,39 @@ def run_auto_pipeline(config: dict, auto_approve: bool = True, target_category: 
     telegram.send_topic_discovered(selected_topic)
 
     # 2단계: 심층 아티클 작성
-    print("\n✍️ [2단계: AI 심층 아티클 작성 중... (1,500자 이상 + FAQ + 애드센스 슬롯)]")
+    print("\n✍️ [2단계: AI 심층 아티클 작성 중... (1,800자 이상 + FAQ + 애드센스 슬롯)]")
     article = writer.write_article(selected_topic)
     print(f"✅ 글 작성 완료! 제목: {article.get('title', '')}")
 
-    # 3단계: 애드센스 정책 & SEO 품질 검사
-    print("\n🔎 [3단계: SEO 점수 및 애드센스 정책 사전 검증]")
-    inspection = inspector.inspect_article(article)
-    print(inspection.get("summary", ""))
+    # 3단계: Gemini 3.1 Pro (Thinking Effort: High) 독립 감수 에이전트 검증
+    print("\n🧐 [3단계: Gemini 3.1 Pro 심층 팩트체크 & SEO/E-E-A-T 감수 가동]")
+    review = reviewer.review_article(article, selected_topic)
+    score = review.get("total_score", 0)
+    verdict = review.get("verdict", "UNKNOWN")
+    print(f"📊 감수 종합 결과: {score}/100점 (판정: {verdict})")
 
-    # 4단계: 퍼블리싱 및 배포
-    print("\n🚀 [4단계: Astro 블로그 저장소에 글 게시 및 배포]")
-    def on_article_saved(slug):
-        if selected_topic.get("_csv_keyword"):
-            harvester.mark_csv_keyword_published(selected_topic["_csv_keyword"], slug)
+    # 4단계: 지속적 검토 대기 큐(DraftApprovalQueue)에 적재
+    print("\n📥 [4단계: 지속적 검토 대기 큐(data/draft_queue.json)에 적재]")
+    draft_id = queue.add_draft(article, review, topic=selected_topic)
+    print(f"✅ 대기 큐 적재 완료! 초안 ID: {draft_id}")
 
-    saved_path = publisher.publish_article(article, pre_commit_hook=on_article_saved)
-    post_slug = os.path.splitext(os.path.basename(saved_path))[0]
-    full_post_url = f"{site_url.rstrip('/')}/blog/{post_slug}/"
-    print(f"🎉 성공적으로 게시되었습니다: {full_post_url}")
+    # 5단계: 텔레그램 감수 보고서 및 승인 요청 전송
+    print("\n📲 [5단계: 텔레그램 스마트 감수 보고서 전송]")
+    telegram.send_review_report(draft_id, article, review)
 
-    # 키워드 큐(keywords.csv) 상태 갱신 fallback
-    if selected_topic.get("_csv_keyword"):
-        harvester.mark_csv_keyword_published(selected_topic["_csv_keyword"], post_slug)
+    # 6단계: 승인 모드 분기 (기본값: HITL 휴먼 승인 대기)
+    if auto_approve:
+        print(f"\n⚡ [자동 승인 모드] 초안 '{draft_id}'를 즉시 발행합니다...")
+        success, res = publish_queued_draft(config, draft_id)
+        if success:
+            print(f"🎉 배포 성공: {res}")
+        else:
+            print(f"❌ 배포 실패: {res}")
+    else:
+        print(f"\n⏳ [HITL 승인 대기] 초안 ID '{draft_id}'가 대기 큐에 안전하게 저장되었습니다.")
+        print(f"👉 텔레그램 메시지의 [✅ 즉시 승인 및 발행] 버튼 또는 '/approve {draft_id}' 명령어로 발행하세요.")
 
-    # 📲 텔레그램 알림 2: 새 글 작성 및 배포 보고
-    telegram.send_article_published(article, inspection, full_post_url)
-
-    # 5단계: 검색엔진 크롤러 색인 요청
-    print("\n📡 [5단계: 구글 검색엔진 크롤러 색인 요청 (Sitemap Ping)]")
-    indexer.ping_sitemap()
-
-    print("\n✨ 모든 에이전트 작업이 성공적으로 완료되었습니다!")
+    print("\n✨ 파이프라인 프로세스가 안전하게 완료되었습니다!")
 
 def run_dryrun_pipeline(config: dict):
     print("=" * 60)
@@ -169,6 +229,8 @@ def main():
     parser = argparse.ArgumentParser(description="골든라이프(GoldenLife) 자동화 블로그 파이프라인")
     parser.add_argument("--mode", choices=["auto", "dryrun", "geeknews_weekly", "trend", "interactive", "report", "morning_report", "evening_report", "revenue_report", "health", "test_telegram"], default="auto")
     parser.add_argument("--approve", action="store_true", help="초안 자동 승인 모드")
+    parser.add_argument("--publish-draft", type=str, default=None, help="대기 큐의 특정 draft_id 즉시 승인 및 배포")
+    parser.add_argument("--list-queue", action="store_true", help="대기 큐 목록 조회")
     parser.add_argument("--category", type=str, default=None, help="특정 카테고리 지정")
     args = parser.parse_args()
 
@@ -176,8 +238,24 @@ def main():
     telegram = TelegramNotifier(config)
     tracker = PerformanceTracker(config)
 
+    if args.list_queue:
+        queue = DraftApprovalQueue()
+        pending = queue.list_pending()
+        print(f"\n📋 [대기 중인 초안 큐 ({len(pending)}건)]")
+        for d in pending:
+            print(f"  • [{d['draft_id']}] ({d['created_at']}) {d['title']} - {d['review'].get('total_score')}점 ({d['review'].get('verdict')})")
+        return
+
+    if args.publish_draft:
+        success, res = publish_queued_draft(config, args.publish_draft)
+        if success:
+            print(f"🎉 성공적으로 발행되었습니다: {res}")
+        else:
+            print(f"❌ 발행 실패: {res}")
+        return
+
     if args.mode == "auto":
-        run_auto_pipeline(config, auto_approve=True, target_category=args.category)
+        run_auto_pipeline(config, auto_approve=args.approve, target_category=args.category)
         
     elif args.mode == "geeknews_weekly":
         run_geeknews_weekly_pipeline(config)

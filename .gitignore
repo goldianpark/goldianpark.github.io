@@ -16,3 +16,4 @@ __pycache__/
 # Secrets
 .env
 .env.local
+automation-pipeline/data/draft_queue.json

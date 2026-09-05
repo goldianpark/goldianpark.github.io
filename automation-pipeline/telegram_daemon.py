@@ -14,7 +14,8 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Cal
 from integrations.telegram_bot import _load_env_file, TelegramNotifier
 from integrations.antigravity_runner import AntigravityRunner
 from agents.performance_tracker import PerformanceTracker
-from main_pipeline import load_config, KeywordHarvester, ContentWriter, PolicyInspector, GitHubPublisher, GoogleIndexing
+from modules.draft_queue import DraftApprovalQueue
+from main_pipeline import load_config, publish_queued_draft, KeywordHarvester, ContentWriter, PolicyInspector, GitHubPublisher, GoogleIndexing
 import asyncio
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -97,7 +98,11 @@ async def handle_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 ━━━━━━━━━━━━━━━━━━━━
 🤖 <b>기본 명령어 목록:</b>
 
-• <code>/status</code> : 라즈베리파이 상태, 타이머 스케줄, 발행 현황 및 대화 세션 조회
+• <code>/status</code> : 라즈베리파이 상태, 타이머 스케줄, 대기 큐 및 세션 조회
+• <code>/queue</code> : 발행 대기 중인 초안 큐 목록 및 감수 점수 조회
+• <code>/approve [ID]</code> : 특정 초안 승인 및 GitHub Pages 즉시 배포
+• <code>/reject [ID]</code> : 특정 초안 발행 보류(반려) 처리
+• <code>/review [ID]</code> : 특정 초안의 Gemini 3.1 Pro 심층 감수 보고서 조회
 • <code>/write [주제/자료]</code> : 새로운 블로그 포스팅 기획 및 작성 시작
 • <code>/edit [URL] [요청사항]</code> : 기존 블로그 포스팅 내용 또는 URL(슬러그) 수정
 • <code>/cancel</code> 또는 <code>/reset</code> : 진행 중인 기획/초안 작업 취소 및 초기화
@@ -229,6 +234,11 @@ async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception:
             pass
 
+    # Draft Approval Queue Status
+    draft_queue = DraftApprovalQueue()
+    pending_drafts = draft_queue.list_pending()
+    draft_queue_summary = f"<b>{len(pending_drafts)}건 대기 중</b> (명령어: <code>/queue</code>)" if pending_drafts else "대기 중인 초안 없음 (0건)"
+
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     msg = f"""📊 <b>[{SITE_TITLE} 블로그 에이전트 시스템 현황]</b> ({now_str})
@@ -242,8 +252,9 @@ async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TY
 ⏰ <b>자동화 에이전트 스케줄</b>
 {timers_text}
 
-📚 <b>블로그 콘텐츠 & 키워드 큐</b>
+📚 <b>블로그 콘텐츠 & 대기 큐</b>
   • 총 포스트 수: <b>{total_posts}개</b> (+{today_posts}건 오늘 발행)
+  • 📥 <b>검토 대기 큐</b>: {draft_queue_summary}
   • 📋 고단가 롱테일 큐: {queue_summary}
   • 최근 발행 글: {latest_post_info}
 
@@ -263,8 +274,110 @@ async def handle_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if chat_id in sessions:
         del sessions[chat_id]
         await update.message.reply_text("🔄 현재 작업 세션이 취소 및 초기화되었습니다. 새로운 주제를 언제든 입력해주세요!")
+
+async def handle_queue_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    queue = DraftApprovalQueue()
+    pending = queue.list_pending()
+    if not pending:
+        await update.message.reply_text("📋 <b>현재 승인 대기 중인 초안이 없습니다.</b>\n새 글이 작성되면 이곳에 누적됩니다.", parse_mode="HTML")
+        return
+        
+    msg_lines = [f"📋 <b>[{SITE_TITLE} 검토 대기 큐 목록 ({len(pending)}건)]</b>\n━━━━━━━━━━━━━━━━━━━━"]
+    keyboard = []
+    
+    for idx, d in enumerate(pending[:5], 1):
+        draft_id = d.get("draft_id", "")
+        title = d.get("title", "제목 없음")
+        score = d.get("review", {}).get("total_score", 0)
+        verdict = d.get("review", {}).get("verdict", "UNKNOWN")
+        created = d.get("created_at", "")[:16]
+        
+        msg_lines.append(
+            f"<b>{idx}. {title}</b>\n"
+            f"  • ID: <code>{draft_id}</code>\n"
+            f"  • 감수 점수: <b>{score}점</b> ({verdict}) | 📅 {created}\n"
+        )
+        keyboard.append([
+            InlineKeyboardButton(f"✅ 승인 #{idx}", callback_data=f"approve:{draft_id}"),
+            InlineKeyboardButton(f"📖 초안 #{idx}", callback_data=f"view_draft:{draft_id}"),
+            InlineKeyboardButton(f"❌ 보류 #{idx}", callback_data=f"reject:{draft_id}")
+        ])
+        
+    msg_lines.append("━━━━━━━━━━━━━━━━━━━━\n💡 <i>버튼을 누르거나 <code>/approve &lt;ID&gt;</code> 로 승인할 수 있습니다.</i>")
+    reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
+    await update.message.reply_text("\n".join(msg_lines), parse_mode="HTML", reply_markup=reply_markup)
+
+async def handle_approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args
+    queue = DraftApprovalQueue()
+    if not args:
+        pending = queue.list_pending()
+        if not pending:
+            await update.message.reply_text("⚠️ 대기 중인 초안이 없습니다.")
+            return
+        elif len(pending) == 1:
+            draft_id = pending[0]["draft_id"]
+        else:
+            draft_list_text = "\n".join([f"• <code>{d['draft_id']}</code>: {d['title']}" for d in pending[:5]])
+            await update.message.reply_text(
+                f"⚠️ 승인할 초안 ID를 입력해주세요:\n<code>/approve &lt;draft_id&gt;</code>\n\n대기 목록:\n{draft_list_text}",
+                parse_mode="HTML"
+            )
+            return
     else:
-        await update.message.reply_text("ℹ️ 현재 진행 중인 작업 세션이 없습니다.")
+        draft_id = args[0]
+        
+    draft = queue.get_draft(draft_id)
+    if not draft:
+        await update.message.reply_text(f"❌ 초안 ID '{draft_id}'를 찾을 수 없습니다.")
+        return
+        
+    status_msg = await update.message.reply_text(
+        f"🚀 <b>초안('{draft.get('title')}') 승인 완료!</b>\nGitHub Pages에 배포를 진행 중입니다...",
+        parse_mode="HTML"
+    )
+    
+    success, res = publish_queued_draft(config, draft["draft_id"])
+    if success:
+        await status_msg.edit_text(
+            f"🎉 <b>[포스팅 승인 및 배포 완료]</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+            f"📌 <b>제목</b>: <b>{draft.get('title')}</b>\n"
+            f"🔗 <b>글 바로가기</b>: <a href=\"{res}\">{res}</a>\n\n"
+            f"✨ <i>GitHub Pages에 성공적으로 배포 및 색인 요청되었습니다.</i>",
+            parse_mode="HTML",
+            disable_web_page_preview=False
+        )
+    else:
+        await status_msg.edit_text(f"❌ 배포 실패: {res}")
+
+async def handle_reject_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args
+    queue = DraftApprovalQueue()
+    if not args:
+        await update.message.reply_text("⚠️ 보류할 초안 ID를 입력해주세요:\n<code>/reject &lt;draft_id&gt;</code>", parse_mode="HTML")
+        return
+    draft_id = args[0]
+    ok = queue.mark_rejected(draft_id)
+    if ok:
+        await update.message.reply_text(f"❌ 초안(<code>{draft_id}</code>)이 보류 처리되었습니다.", parse_mode="HTML")
+    else:
+        await update.message.reply_text(f"⚠️ 초안(<code>{draft_id}</code>)을 찾을 수 없습니다.", parse_mode="HTML")
+
+async def handle_review_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args
+    queue = DraftApprovalQueue()
+    if not args:
+        await update.message.reply_text("⚠️ 조회할 초안 ID를 입력해주세요:\n<code>/review &lt;draft_id&gt;</code>", parse_mode="HTML")
+        return
+    draft_id = args[0]
+    draft = queue.get_draft(draft_id)
+    if not draft:
+        await update.message.reply_text(f"⚠️ 초안(<code>{draft_id}</code>)을 찾을 수 없습니다.", parse_mode="HTML")
+        return
+        
+    notifier = TelegramNotifier(config)
+    notifier.send_review_report(draft["draft_id"], draft.get("article", {}), draft.get("review", {}))
+    await update.message.reply_text(f"🧐 초안(<code>{draft_id}</code>)의 감수 보고서를 전송했습니다.", parse_mode="HTML")
 
 async def handle_write_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = " ".join(context.args) if context.args else ""
@@ -1010,6 +1123,47 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("❌ 작업 세션이 취소되었습니다.")
         return
 
+    # HITL 대기 큐 버튼 콜백
+    if data.startswith("approve:"):
+        target_id = data.split("approve:", 1)[1]
+        await query.edit_message_text("🚀 <b>[초안 승인 접수]</b> GitHub Pages 배포를 시작합니다...", parse_mode="HTML")
+        success, res = publish_queued_draft(config, target_id)
+        if success:
+            await query.message.reply_text(
+                f"🎉 <b>[포스팅 승인 및 배포 완료]</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+                f"🔗 <b>글 바로가기</b>: <a href=\"{res}\">{res}</a>\n\n"
+                f"✨ <i>GitHub Pages에 성공적으로 배포 및 색인 요청되었습니다.</i>",
+                parse_mode="HTML",
+                disable_web_page_preview=False
+            )
+        else:
+            await query.message.reply_text(f"❌ 배포 실패: {res}")
+        return
+
+    if data.startswith("reject:"):
+        target_id = data.split("reject:", 1)[1]
+        queue = DraftApprovalQueue()
+        queue.mark_rejected(target_id)
+        await query.edit_message_text(f"❌ 초안(<code>{target_id[:16]}...</code>)이 발행 보류 처리되었습니다.", parse_mode="HTML")
+        return
+
+    if data.startswith("view_draft:"):
+        target_id = data.split("view_draft:", 1)[1]
+        queue = DraftApprovalQueue()
+        draft = queue.get_draft(target_id)
+        if draft:
+            content = draft.get("article", {}).get("markdown_content", "본문 없음")
+            if len(content) > 3500:
+                content = content[:3500] + "\n\n... (분량 초과로 일부 생략되었습니다) ..."
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"📖 <b>[본문 초안 전문 미리보기 - {draft.get('title')}]</b>\n\n{content}",
+                parse_mode="HTML"
+            )
+        else:
+            await context.bot.send_message(chat_id=chat_id, text="⚠️ 해당 초안을 찾을 수 없습니다.")
+        return
+
     if data == "btn_create_draft":
         await query.edit_message_text("✍️ 초안 작성을 시작합니다...")
         asyncio.create_task(create_article_draft(chat_id, query.message.message_id, context))
@@ -1095,6 +1249,10 @@ def main():
     app.add_handler(CommandHandler("status", handle_status_command))
     app.add_handler(CommandHandler("cancel", handle_cancel))
     app.add_handler(CommandHandler("reset", handle_cancel))
+    app.add_handler(CommandHandler("queue", handle_queue_command))
+    app.add_handler(CommandHandler("approve", handle_approve_command))
+    app.add_handler(CommandHandler("reject", handle_reject_command))
+    app.add_handler(CommandHandler("review", handle_review_command))
     app.add_handler(CommandHandler("write", handle_write_command))
     app.add_handler(CommandHandler("edit", handle_edit_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
