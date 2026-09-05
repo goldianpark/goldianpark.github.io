@@ -1113,7 +1113,10 @@ async def execute_edit_publish(chat_id, context):
 # -------------------------------------------------------------
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    try:
+        await query.answer()
+    except Exception as e:
+        logger.warning(f"Failed to answer callback query: {e}")
     data = query.data
     chat_id = query.message.chat_id
 
