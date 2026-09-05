@@ -66,6 +66,7 @@ class DraftApprovalQueue:
             "draft_id": draft_id,
             "title": title,
             "category": article.get("category", actual_topic.get("category", "")),
+            "existing_slug": article.get("existing_slug") or actual_topic.get("existing_slug") or article.get("slug"),
             "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
             "status": "pending_review",  # pending_review, approved, rejected, published
             "topic": actual_topic,

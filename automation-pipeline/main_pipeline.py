@@ -55,8 +55,12 @@ def publish_queued_draft(config: dict, draft_id: str) -> tuple:
             except Exception:
                 pass
 
-    saved_path = publisher.publish_article(article, pre_commit_hook=on_article_saved)
-    post_slug = os.path.splitext(os.path.basename(saved_path))[0]
+    existing_slug = draft_item.get("existing_slug") or article.get("existing_slug") or article.get("slug")
+    if existing_slug:
+        saved_path, post_slug = publisher.update_existing_article(existing_slug, article)
+    else:
+        saved_path = publisher.publish_article(article, pre_commit_hook=on_article_saved)
+        post_slug = os.path.splitext(os.path.basename(saved_path))[0]
     full_post_url = f"{site_url}/blog/{post_slug}/"
     
     # 큐 상태 갱신

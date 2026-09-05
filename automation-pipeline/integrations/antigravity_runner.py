@@ -50,13 +50,23 @@ class AntigravityRunner:
                 full_prompt = f"{system_prompt}\n\n[USER REQUEST]\n{user_prompt}"
                 
                 cmd = [cli_path, "--dangerously-skip-permissions"]
+                mapped_model = model_name
+                mapped_effort = effort
                 if model_name:
-                    cmd.extend(["--model", model_name])
-                if effort:
-                    cmd.extend(["--effort", effort])
+                    if "gemini-3.1-pro" in model_name:
+                        mapped_model = "gemini-3.1-pro-high" if effort != "low" else "gemini-3.1-pro-low"
+                        mapped_effort = None
+                    elif "flash" in model_name:
+                        mapped_model = "gemini-3.8-flash-high"
+                        mapped_effort = None
+
+                if mapped_model:
+                    cmd.extend(["--model", mapped_model])
+                if mapped_effort:
+                    cmd.extend(["--effort", mapped_effort])
                 cmd.extend(["-p", full_prompt])
 
-                print(f"🤖 Antigravity CLI 호출 중... (모델: {model_name or 'default'}, 추론: {effort or 'default'})")
+                print(f"🤖 Antigravity CLI 호출 중... (모델: {mapped_model or 'default'}, 추론: {mapped_effort or 'default'})")
                 env = os.environ.copy()
                 env["PATH"] = f"{os.path.expanduser('~/.local/bin')}:/usr/local/bin:/usr/bin:/bin:" + env.get("PATH", "")
                 
