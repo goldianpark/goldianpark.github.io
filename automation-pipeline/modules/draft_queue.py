@@ -43,7 +43,8 @@ class DraftApprovalQueue:
         article: Dict[str, Any],
         review_or_topic: Dict[str, Any],
         third_arg: Optional[Dict[str, Any]] = None,
-        topic: Optional[Dict[str, Any]] = None
+        topic: Optional[Dict[str, Any]] = None,
+        existing_slug: Optional[str] = None
     ) -> str:
         """
         초안 및 감수 보고서를 큐에 추가.
@@ -66,7 +67,7 @@ class DraftApprovalQueue:
             "draft_id": draft_id,
             "title": title,
             "category": article.get("category", actual_topic.get("category", "")),
-            "existing_slug": article.get("existing_slug") or actual_topic.get("existing_slug") or article.get("slug"),
+            "existing_slug": existing_slug or article.get("existing_slug") or actual_topic.get("existing_slug") or article.get("slug"),
             "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
             "status": "pending_review",  # pending_review, approved, rejected, published
             "topic": actual_topic,
