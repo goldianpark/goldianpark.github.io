@@ -53,8 +53,7 @@ class GeekNewsHarvester:
         if not articles:
             articles_summary = "최신 AI 모델 동향, 오픈소스 개발 도구, 소프트웨어 엔지니어링 아키텍처 및 생산성 도구 트렌드"
         else:
-            articles_summary = "
-".join([
+            articles_summary = "\n".join([
                 f"- [{a['published'][:10]}] {a['title']}: {a['content']}"
                 for a in articles[:30]
             ])

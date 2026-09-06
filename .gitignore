@@ -17,3 +17,4 @@ __pycache__/
 .env
 .env.local
 automation-pipeline/data/draft_queue.json
+SESSION_HANDOFF_MASTER.md
