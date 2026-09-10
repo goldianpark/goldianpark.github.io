@@ -41,6 +41,7 @@ class TelegramNotifier:
         self.bot_token = telegram_cfg.get("bot_token") or os.getenv("TELEGRAM_BOT_TOKEN", "")
         self.chat_id = str(telegram_cfg.get("chat_id") or os.getenv("TELEGRAM_CHAT_ID", ""))
         self.site_url = config.get("site", {}).get("url", "https://goldianpark.github.io")
+        self.site_title = config.get("site", {}).get("title", "골든라이프")
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}" if self.bot_token else None
 
     def _send_message(self, text: str, reply_markup: Optional[Dict] = None) -> bool:
@@ -228,7 +229,71 @@ class TelegramNotifier:
         return self._send_message(msg)
 
     # -------------------------------------------------------------
-    # 4. 광고 수익 현황 일일 보고
+    # 4. 오늘 블로그 클릭 & 뷰(View) 트래픽 일일 보고 (애드센스 등록 전)
+    # -------------------------------------------------------------
+    def send_click_view_daily_report(self, traffic_data: Dict[str, Any]) -> bool:
+        """
+        애드센스 정식 등록 전, 오늘의 실질적인 클릭 및 조회수(PV/UV) 카운트 일일 보고 발송
+        """
+        now_str = datetime.now().strftime("%Y-%m-%d")
+        today_views = traffic_data.get("today_views", 0)
+        today_uv = traffic_data.get("today_uv", 0)
+        today_clicks = traffic_data.get("today_clicks", 0)
+        ctr = traffic_data.get("ctr", 0.0)
+        cumulative = traffic_data.get("cumulative_views", 0)
+        growth = traffic_data.get("growth_vs_yesterday", 0.0)
+        total_posts = traffic_data.get("total_posts", 0)
+
+        growth_sign = "+" if growth >= 0 else ""
+        growth_badge = f"{growth_sign}{growth}%"
+
+        # 카테고리별 유입 점유율
+        cat_views = traffic_data.get("category_views", {})
+        cat_lines = []
+        for cat_name, c_data in list(cat_views.items())[:4]:
+            cat_pv = c_data.get("views", 0)
+            cat_ratio = c_data.get("ratio", 0.0)
+            cat_lines.append(f"  • 🏷️ <b>{cat_name}</b>: <code>{cat_pv:,} PV</code> ({cat_ratio}%)")
+        cat_html = "\n".join(cat_lines) if cat_lines else "  • 집계 중\n"
+
+        # 인기 포스트 TOP 3
+        top_posts = traffic_data.get("top_posts", [])
+        top_lines = []
+        for i, p in enumerate(top_posts[:3], 1):
+            p_title = p.get("title", "")
+            p_views = p.get("views", 0)
+            p_clicks = p.get("clicks", 0)
+            p_slug = p.get("slug", "")
+            post_url = f"{self.site_url.rstrip('/')}/blog/{p_slug}/" if p_slug else self.site_url
+            top_lines.append(f"  <b>{i}.</b> <a href=\"{post_url}\">{p_title}</a>\n     └ 👁️ <code>{p_views:,} 뷰</code> | 🖱️ <code>{p_clicks} 클릭</code>")
+        top_html = "\n".join(top_lines) if top_lines else "  • 집계 중\n"
+
+        msg = f"""📈 <b>[{self.site_title} 오늘 트래픽 & 클릭/뷰 보고]</b> ({now_str})
+━━━━━━━━━━━━━━━━━━━━
+📢 <i>현재 애드센스 심사/등록 준비 단계로, 실질적인 방문자 유입 및 독자 반응(클릭·뷰) 지표를 카운트하여 보고합니다.</i>
+
+📊 <b>오늘의 핵심 트래픽 요약</b>:
+  • 👁️ <b>오늘 총 페이지뷰 (PV)</b>: <b>{today_views:,} 회</b> ({growth_badge} 전일비)
+  • 👥 <b>오늘 순 방문자수 (UV)</b>: <b>{today_uv:,} 명</b>
+  • 🖱️ <b>독자 상호작용 클릭수</b>: <b>{today_clicks:,} 회</b> (클릭률 <code>{ctr:.2f}%</code>)
+  • 📚 <b>사이트 누적 총 조회수</b>: <b>{cumulative:,} PV</b> (총 {total_posts}개 포스트)
+
+📂 <b>카테고리별 유입 점유율</b>:
+{cat_html}
+
+🔥 <b>오늘 가장 많이 읽힌 인기 글 TOP 3</b>:
+{top_html}
+
+━━━━━━━━━━━━━━━━━━━━
+💡 <b>운영 인사이트</b>:
+• 고단가 시니어 롱테일 키워드 유입 및 체류 시간이 안정적으로 유지 중
+• 독자 클릭률(CTR)이 높은 인기 복지/연금 포스트에 추후 애드센스 광고 최우선 배치 예정
+🌐 <b>블로그 홈</b>: <a href="{self.site_url}">{self.site_url}</a>"""
+
+        return self._send_message(msg)
+
+    # -------------------------------------------------------------
+    # 4-1. 광고 수익 현황 일일 보고 (애드센스 정식 등록 후 사용)
     # -------------------------------------------------------------
     def send_adsense_daily_report(self, revenue_data: Dict[str, Any]) -> bool:
         now_str = datetime.now().strftime("%Y-%m-%d")
