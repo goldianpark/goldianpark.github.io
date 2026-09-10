@@ -232,7 +232,7 @@ class PerformanceTracker:
         }
 
         # 3. GA4 상태
-        ga_id = self.config.get("seo", {}).get("gaId") or os.getenv("PUBLIC_GA_ID", "")
+        ga_id = self.config.get("analytics", {}).get("ga_id") or self.config.get("seo", {}).get("gaId") or os.getenv("PUBLIC_GA_ID", "")
         if ga_id:
             ga_result = {
                 "name": "Google Analytics 4",

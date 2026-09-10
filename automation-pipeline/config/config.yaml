@@ -32,8 +32,8 @@ adsense:
 
 # 3-1. 웹 분석 (GA4) 및 검색엔진 소유권 인증
 analytics:
-  ga_id: "" # 구글 애널리틱스 4 측정 ID (예: G-XXXXXXXXXX)
-  naver_verification: "" # 네이버 서치어드바이저 사이트 확인 메타태그 값
+  ga_id: "G-3DLTD0FCBK" # 구글 애널리틱스 4 측정 ID (예: G-XXXXXXXXXX)
+  naver_verification: "0b8551259eb00b98f777ab8bf49411fb" # 네이버 서치어드바이저 사이트 확인 메타태그 값
 
 
 # 4. 콘텐츠 생성 & 타겟 분야 설정
