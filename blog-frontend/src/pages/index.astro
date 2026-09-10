@@ -30,22 +30,51 @@ const categories = [
 <BaseLayout
   title={siteConfig.site.name}
   description={siteConfig.site.description}
+  image={`${base}/images/hero-goldenlife.png`}
 >
-  <!-- Hero Section with Warm Gold Gradient -->
-  <section class="bg-gradient-to-b from-amber-100/70 via-amber-50/40 to-[#FAF8F5] border-b-2 border-amber-200/70 py-16 sm:py-24">
+  <!-- Hero Section with Warm Gold Gradient & Senior Couple Main Banner -->
+  <section class="bg-gradient-to-b from-amber-100/70 via-amber-50/40 to-[#FAF8F5] border-b-2 border-amber-200/70 py-12 sm:py-16">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs sm:text-sm font-bold mb-6 shadow-2xs">
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs sm:text-sm font-bold mb-5 shadow-2xs">
         <span>✨ {siteConfig.site.slogan}</span>
       </div>
-      <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-950 tracking-tight leading-tight max-w-4xl mx-auto mb-6">
+      <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-950 tracking-tight leading-tight max-w-4xl mx-auto mb-5">
         {siteConfig.site.shortName} <span class="text-amber-700 underline decoration-amber-300 underline-offset-8">시니어 백과</span>
       </h1>
-      <p class="text-base sm:text-xl text-slate-700 max-w-3xl mx-auto leading-relaxed mb-8 font-medium">
+      <p class="text-base sm:text-xl text-slate-700 max-w-3xl mx-auto leading-relaxed mb-6 font-medium">
         {siteConfig.site.description}
       </p>
+
+      <!-- Main Visual Hero Image Banner -->
+      <div class="relative max-w-5xl mx-auto my-6 sm:my-8 rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-amber-300/80 shadow-xl shadow-amber-900/10 group bg-amber-50">
+        <img
+          src={`${base}/images/hero-goldenlife.png`}
+          alt="골든라이프 - 가을 산책로를 다정하게 걷는 시니어 부부의 행복한 노후"
+          class="w-full h-auto object-cover transform group-hover:scale-102 transition-transform duration-700 ease-out"
+          loading="eager"
+          width="1024"
+          height="341"
+        />
+        <!-- Subtle Bottom Overlay & Warm Slogan Badge -->
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/15 to-transparent flex items-end justify-between p-4 sm:p-7 text-left">
+          <div class="text-white drop-shadow-md">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-amber-950 text-xs sm:text-sm font-black mb-1.5 shadow-xs">
+              🍁 건강하고 행복한 100세 인생
+            </span>
+            <p class="text-sm sm:text-xl md:text-2xl font-black text-white leading-tight">
+              은퇴 후 더 빛나는 삶, 골든라이프가 함께 걷겠습니다
+            </p>
+          </div>
+          <div class="hidden md:flex items-center gap-2">
+            <span class="px-3.5 py-1.5 rounded-xl bg-white/20 backdrop-blur-md text-white text-xs sm:text-sm font-bold border border-white/30 shadow-xs">
+              골든라이프 공식 매거진
+            </span>
+          </div>
+        </div>
+      </div>
       
       <!-- Quick Categories Pills (Gold Theme) -->
-      <div class="flex flex-wrap items-center justify-center gap-2.5">
+      <div class="flex flex-wrap items-center justify-center gap-2.5 mt-4">
         {categories.map(cat => (
           <a
             href={cat.href}
