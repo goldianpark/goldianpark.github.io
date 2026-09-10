@@ -97,7 +97,9 @@ class PerformanceTracker:
         today_posts_count = len([p for p in posts if p.get("date") == today_str])
 
         if today_str in history:
-            return history[today_str]
+            res = history[today_str]
+            res["sources"] = self.get_traffic_sources_status()
+            return res
 
         # 어제 데이터 참조
         yesterday_data = history.get(yesterday_str, {})
