@@ -1,0 +1,67 @@
+{
+  "2026-09-10": {
+    "date": "2026-09-10",
+    "today_views": 1671,
+    "today_uv": 578,
+    "today_clicks": 165,
+    "ctr": 9.87,
+    "cumulative_views": 16791,
+    "total_posts": 42,
+    "today_posts": 5,
+    "category_views": {
+      "정부지원금 & 복지": {
+        "views": 617,
+        "clicks": 54,
+        "ratio": 36.9
+      },
+      "시니어 건강 & 일상": {
+        "views": 586,
+        "clicks": 37,
+        "ratio": 35.1
+      },
+      "연금 & 절세 상식": {
+        "views": 491,
+        "clicks": 32,
+        "ratio": 29.4
+      }
+    },
+    "top_posts": [
+      {
+        "title": "시니어 단기 알바 실버안전지킴이·아동안전지킴이 월급과 지원 방법 총정리",
+        "slug": "2026-09-10-passive-income-892",
+        "category": "정부지원금 & 복지",
+        "views": 555,
+        "clicks": 65
+      },
+      {
+        "title": "치매 국가책임제 혜택 총정리: 실종 예방 배회감지기 신청부터 무료 조기검진까지",
+        "slug": "2026-09-10-passive-income-6485",
+        "category": "정부지원금 & 복지",
+        "views": 438,
+        "clicks": 33
+      },
+      {
+        "title": "어르신 임플란트 실패 시 재수술 비용 지원 및 평생 관리 수칙",
+        "slug": "2026-09-10-passive-income-2084",
+        "category": "시니어 건강 & 일상",
+        "views": 385,
+        "clicks": 32
+      },
+      {
+        "title": "6070 근감소증 예방을 위한 하루 단백질 섭취량과 맞춤 식단표",
+        "slug": "2026-09-10-6070",
+        "category": "시니어 건강 & 일상",
+        "views": 263,
+        "clicks": 22
+      },
+      {
+        "title": "국민연금 추후납부(추납) 제도로 은퇴 후 연금 수령액 2배 늘리기: 자격 요건, 모의계산 및 건보료 방어 비법",
+        "slug": "2026-09-10-2",
+        "category": "연금 & 절세 상식",
+        "views": 189,
+        "clicks": 18
+      }
+    ],
+    "growth_vs_yesterday": 11.1
+  }
+}

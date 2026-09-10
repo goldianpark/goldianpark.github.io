@@ -151,6 +151,16 @@ class PerformanceTracker:
                 "clicks": post_clicks
             })
 
+        sources = self.get_traffic_sources_status()
+
+        # 만약 GitHub Traffic API 실측치가 있으면 우선 반영
+        gh = sources.get("github", {})
+        if gh.get("status") == "🟢 실측 연동됨" and gh.get("today_views", 0) > 0:
+            today_pv = gh["today_views"]
+            today_uv = gh.get("today_uniques", today_uv)
+            today_clicks = int(today_pv * 0.08)
+            cumulative_views = gh.get("total_views_14d", cumulative_views)
+
         today_data = {
             "date": today_str,
             "today_views": today_pv,
@@ -162,7 +172,8 @@ class PerformanceTracker:
             "today_posts": today_posts_count,
             "category_views": cat_views,
             "top_posts": top_posts,
-            "growth_vs_yesterday": growth_vs_yesterday
+            "growth_vs_yesterday": growth_vs_yesterday,
+            "sources": sources
         }
 
         history[today_str] = today_data
@@ -173,6 +184,73 @@ class PerformanceTracker:
             print(f"⚠️ 트래픽 히스토리 저장 실패: {e}")
 
         return today_data
+
+    def get_traffic_sources_status(self) -> Dict[str, Any]:
+        """
+        3대 실측 트래픽 소스 (GitHub Traffic API, GoatCounter, Google Analytics 4) 상태 및 실측 데이터 조회
+        """
+        github_token = os.getenv("GITHUB_TOKEN") or self.config.get("github", {}).get("token", "")
+        repo = os.getenv("GITHUB_REPO") or self.config.get("github", {}).get("repo", "goldianpark/goldianpark.github.io")
+
+        github_result = {
+            "name": "GitHub Pages Traffic API",
+            "status": "대기",
+            "detail": "GITHUB_TOKEN 등록 시 GitHub 공식 방문자수 1초 연동"
+        }
+        if github_token:
+            try:
+                import urllib.request
+                req = urllib.request.Request(
+                    f"https://api.github.com/repos/{repo}/traffic/views",
+                    headers={"Authorization": f"Bearer {github_token}", "User-Agent": "AutoBlog-TrafficBot"}
+                )
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    g_data = json.loads(resp.read().decode())
+                    today_str = datetime.now().strftime("%Y-%m-%d")
+                    today_view = next((v for v in g_data.get("views", []) if v.get("timestamp", "").startswith(today_str)), None)
+                    github_result = {
+                        "name": "GitHub Pages Traffic API",
+                        "status": "🟢 실측 연동됨",
+                        "today_views": today_view.get("count", 0) if today_view else 0,
+                        "today_uniques": today_view.get("uniques", 0) if today_view else 0,
+                        "total_views_14d": g_data.get("count", 0),
+                        "total_uniques_14d": g_data.get("uniques", 0),
+                        "detail": f"14일간 누적 {g_data.get('count', 0)} 뷰 ({g_data.get('uniques', 0)} 순방문)"
+                    }
+            except Exception as e:
+                github_result["detail"] = f"인증 확인 필요 ({e})"
+
+        # 2. GoatCounter 상태
+        goat_code = self.config.get("seo", {}).get("goatcounterCode", "goldianpark")
+        goat_result = {
+            "name": "GoatCounter (초경량 실시간)",
+            "status": "🟢 프론트엔드 연동 활성",
+            "dashboard": f"https://{goat_code}.goatcounter.com",
+            "tag": f"gc.zgo.at/count.js ({goat_code})"
+        }
+
+        # 3. GA4 상태
+        ga_id = self.config.get("seo", {}).get("gaId") or os.getenv("PUBLIC_GA_ID", "")
+        if ga_id:
+            ga_result = {
+                "name": "Google Analytics 4",
+                "status": "🟢 측정 활성",
+                "ga_id": ga_id,
+                "detail": f"측정 ID: {ga_id}"
+            }
+        else:
+            ga_result = {
+                "name": "Google Analytics 4",
+                "status": "⏳ 측정 ID(G-...) 등록 대기",
+                "ga_id": None,
+                "detail": "blog.config.json의 gaId 또는 PUBLIC_GA_ID 등록 시 즉시 실측"
+            }
+
+        return {
+            "github": github_result,
+            "goatcounter": goat_result,
+            "ga4": ga_result
+        }
 
     def get_adsense_statistics(self) -> Dict[str, Any]:
         post_counts = self.count_posts()

@@ -29,6 +29,7 @@ const {
   tags = [],
   gaId = siteConfig.seo.gaId || import.meta.env.PUBLIC_GA_ID || '',
   naverVerification = siteConfig.seo.naverVerification || import.meta.env.PUBLIC_NAVER_VERIFICATION || '',
+  goatcounterCode = siteConfig.seo.goatcounterCode || import.meta.env.PUBLIC_GOATCOUNTER_CODE || 'goldianpark',
 } = Astro.props;
 
 const siteTitle = siteConfig.site.shortName || '골든라이프';
@@ -161,4 +162,9 @@ const faqSchema = (faqs && faqs.length > 0) ? {
     gtag('js', new Date());
     gtag('config', gaId);
   </script>
+)}
+
+<!-- GoatCounter Lightweight Realtime Privacy Analytics -->
+{goatcounterCode && (
+  <script data-goatcounter={`https://${goatcounterCode}.goatcounter.com/count`} async src="//gc.zgo.at/count.js"></script>
 )}

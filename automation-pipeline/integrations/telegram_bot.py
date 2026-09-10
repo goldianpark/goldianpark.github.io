@@ -268,6 +268,19 @@ class TelegramNotifier:
             top_lines.append(f"  <b>{i}.</b> <a href=\"{post_url}\">{p_title}</a>\n     └ 👁️ <code>{p_views:,} 뷰</code> | 🖱️ <code>{p_clicks} 클릭</code>")
         top_html = "\n".join(top_lines) if top_lines else "  • 집계 중\n"
 
+        # 3대 실측 소스 연동 현황
+        sources = traffic_data.get("sources", {})
+        gh_info = sources.get("github", {})
+        goat_info = sources.get("goatcounter", {})
+        ga_info = sources.get("ga4", {})
+
+        gh_status = gh_info.get('status', '연동 대기')
+        gh_detail = gh_info.get('detail', '')
+        goat_status = goat_info.get('status', '연동 활성')
+        goat_dash = goat_info.get('dashboard', '')
+        ga_status = ga_info.get('status', '대기')
+        ga_detail = ga_info.get('detail', '')
+
         msg = f"""📈 <b>[{self.site_title} 오늘 트래픽 & 클릭/뷰 보고]</b> ({now_str})
 ━━━━━━━━━━━━━━━━━━━━
 📢 <i>현재 애드센스 심사/등록 준비 단계로, 실질적인 방문자 유입 및 독자 반응(클릭·뷰) 지표를 카운트하여 보고합니다.</i>
@@ -285,6 +298,11 @@ class TelegramNotifier:
 {top_html}
 
 ━━━━━━━━━━━━━━━━━━━━
+📡 <b>3대 실측 트래픽 트래커 현황</b>:
+  • 🐙 <b>GitHub Pages</b>: {gh_status} <i>({gh_detail})</i>
+  • 🐐 <b>GoatCounter</b>: {goat_status} (<a href="{goat_dash}">실시간 대시보드</a>)
+  • 📊 <b>GA4</b>: {ga_status} <i>({ga_detail})</i>
+
 💡 <b>운영 인사이트</b>:
 • 고단가 시니어 롱테일 키워드 유입 및 체류 시간이 안정적으로 유지 중
 • 독자 클릭률(CTR)이 높은 인기 복지/연금 포스트에 추후 애드센스 광고 최우선 배치 예정
