@@ -8,7 +8,7 @@ import logging
 import subprocess
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
 from integrations.telegram_bot import _load_env_file, TelegramNotifier
@@ -98,6 +98,7 @@ async def handle_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 ━━━━━━━━━━━━━━━━━━━━
 🤖 <b>기본 명령어 목록:</b>
 
+• <code>/traffic</code> (또는 <code>/views</code>, <code>/clicks</code>) : 오늘 실시간 클릭수 및 뷰(PV/UV) 트래픽 보고서 즉시 조회
 • <code>/status</code> : 라즈베리파이 상태, 타이머 스케줄, 대기 큐 및 세션 조회
 • <code>/queue</code> : 발행 대기 중인 초안 큐 목록 및 감수 점수 조회
 • <code>/approve [ID]</code> : 특정 초안 승인 및 GitHub Pages 즉시 배포
@@ -130,6 +131,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "전체 명령어 및 사용 방법이 궁금하시면 언제든 <code>/help</code> 를 입력해 주세요! 🚀",
         parse_mode="HTML"
     )
+
+async def handle_traffic_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """오늘 실시간 클릭 및 뷰(View) 트래픽 보고서 즉시 조회 및 전송"""
+    status_msg = await update.message.reply_text("⏳ <b>실시간 트래픽 및 클릭/뷰 데이터를 집계 중입니다...</b>", parse_mode="HTML")
+    try:
+        tracker = PerformanceTracker(config)
+        traffic_data = tracker.get_click_view_statistics()
+        notifier = TelegramNotifier(config)
+        report_msg = notifier.generate_click_view_report_text(traffic_data)
+        try:
+            await status_msg.edit_text(report_msg, parse_mode="HTML", disable_web_page_preview=True)
+        except Exception:
+            await update.message.reply_text(report_msg, parse_mode="HTML", disable_web_page_preview=True)
+    except Exception as e:
+        logger.error(f"트래픽 보고서 생성 실패: {e}")
+        await update.message.reply_text(f"⚠️ 트래픽 보고서 생성 중 오류가 발생했습니다: {e}")
 
 async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -1240,16 +1257,30 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=chat_id, text="⚠️ 현재 확인 가능한 수정본이 없습니다.")
         return
 
+async def post_init(application):
+    commands = [
+        BotCommand("traffic", "실시간 클릭수 & 뷰 트래픽 보고서"),
+        BotCommand("status", "서버 상태 & 대기 큐 조회"),
+        BotCommand("queue", "발행 대기 초안 목록 조회"),
+        BotCommand("write", "새 블로그 글 작성 기획"),
+        BotCommand("help", "사용 가이드 및 명령어"),
+    ]
+    try:
+        await application.bot.set_my_commands(commands)
+    except Exception as e:
+        logger.warning(f"set_my_commands 실패: {e}")
+
 def main():
     if not BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN is not set.")
         return
         
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", handle_help_command))
     app.add_handler(CommandHandler("status", handle_status_command))
+    app.add_handler(CommandHandler(["traffic", "views", "clicks", "report"], handle_traffic_command))
     app.add_handler(CommandHandler("cancel", handle_cancel))
     app.add_handler(CommandHandler("reset", handle_cancel))
     app.add_handler(CommandHandler("queue", handle_queue_command))

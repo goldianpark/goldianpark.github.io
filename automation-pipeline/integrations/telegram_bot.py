@@ -231,9 +231,9 @@ class TelegramNotifier:
     # -------------------------------------------------------------
     # 4. 오늘 블로그 클릭 & 뷰(View) 트래픽 일일 보고 (애드센스 등록 전)
     # -------------------------------------------------------------
-    def send_click_view_daily_report(self, traffic_data: Dict[str, Any]) -> bool:
+    def generate_click_view_report_text(self, traffic_data: Dict[str, Any]) -> str:
         """
-        애드센스 정식 등록 전, 오늘의 실질적인 클릭 및 조회수(PV/UV) 카운트 일일 보고 발송
+        오늘의 실질적인 클릭 및 조회수(PV/UV) 카운트 보고서 텍스트 생성
         """
         now_str = datetime.now().strftime("%Y-%m-%d")
         today_views = traffic_data.get("today_views", 0)
@@ -307,7 +307,13 @@ class TelegramNotifier:
 • 고단가 시니어 롱테일 키워드 유입 및 체류 시간이 안정적으로 유지 중
 • 독자 클릭률(CTR)이 높은 인기 복지/연금 포스트에 추후 애드센스 광고 최우선 배치 예정
 🌐 <b>블로그 홈</b>: <a href="{self.site_url}">{self.site_url}</a>"""
+        return msg
 
+    def send_click_view_daily_report(self, traffic_data: Dict[str, Any]) -> bool:
+        """
+        애드센스 정식 등록 전, 오늘의 실질적인 클릭 및 조회수(PV/UV) 카운트 일일 보고 발송
+        """
+        msg = self.generate_click_view_report_text(traffic_data)
         return self._send_message(msg)
 
     # -------------------------------------------------------------
