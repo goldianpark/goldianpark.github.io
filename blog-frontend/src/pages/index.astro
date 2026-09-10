@@ -32,57 +32,66 @@ const categories = [
   description={siteConfig.site.description}
   image={`${base}/images/hero-goldenlife.png`}
 >
-  <!-- Hero Section with Warm Gold Gradient & Senior Couple Main Banner -->
-  <section class="bg-gradient-to-b from-amber-100/70 via-amber-50/40 to-[#FAF8F5] border-b-2 border-amber-200/70 py-12 sm:py-16">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs sm:text-sm font-bold mb-5 shadow-2xs">
-        <span>✨ {siteConfig.site.slogan}</span>
-      </div>
-      <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-950 tracking-tight leading-tight max-w-4xl mx-auto mb-5">
-        {siteConfig.site.shortName} <span class="text-amber-700 underline decoration-amber-300 underline-offset-8">시니어 백과</span>
-      </h1>
-      <p class="text-base sm:text-xl text-slate-700 max-w-3xl mx-auto leading-relaxed mb-6 font-medium">
-        {siteConfig.site.description}
-      </p>
-
-      <!-- Main Visual Hero Image Banner -->
-      <div class="relative max-w-5xl mx-auto my-6 sm:my-8 rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-amber-300/80 shadow-xl shadow-amber-900/10 group bg-amber-50">
-        <img
-          src={`${base}/images/hero-goldenlife.png`}
-          alt="골든라이프 - 가을 산책로를 다정하게 걷는 시니어 부부의 행복한 노후"
-          class="w-full h-auto object-cover transform group-hover:scale-102 transition-transform duration-700 ease-out"
-          loading="eager"
-          width="1024"
-          height="341"
-        />
-        <!-- Subtle Bottom Overlay & Warm Slogan Badge -->
-        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/15 to-transparent flex items-end justify-between p-4 sm:p-7 text-left">
-          <div class="text-white drop-shadow-md">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-amber-950 text-xs sm:text-sm font-black mb-1.5 shadow-xs">
-              🍁 건강하고 행복한 100세 인생
-            </span>
-            <p class="text-sm sm:text-xl md:text-2xl font-black text-white leading-tight">
-              은퇴 후 더 빛나는 삶, 골든라이프가 함께 걷겠습니다
-            </p>
-          </div>
-          <div class="hidden md:flex items-center gap-2">
-            <span class="px-3.5 py-1.5 rounded-xl bg-white/20 backdrop-blur-md text-white text-xs sm:text-sm font-bold border border-white/30 shadow-xs">
-              골든라이프 공식 매거진
-            </span>
-          </div>
-        </div>
-      </div>
+  <!-- Hero Section: Senior Couple Panoramic Banner with Center-Aligned Content & Menu -->
+  <section class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8 sm:pb-12">
+    <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl lg:rounded-4xl border-2 border-amber-300/80 shadow-xl shadow-amber-900/10 bg-gradient-to-r from-amber-100 via-amber-50 to-orange-50 min-h-[440px] sm:min-h-[480px] md:min-h-[500px] flex items-center">
       
-      <!-- Quick Categories Pills (Gold Theme) -->
-      <div class="flex flex-wrap items-center justify-center gap-2.5 mt-4">
-        {categories.map(cat => (
-          <a
-            href={cat.href}
-            class="px-4.5 py-2.5 bg-white hover:bg-amber-700 hover:text-white text-slate-800 font-bold text-sm rounded-xl border-2 border-amber-200/90 shadow-2xs hover:shadow-sm transition-all"
-          >
-            {cat.name}
-          </a>
-        ))}
+      <!-- 1. Background Panoramic Image (Senior Couple on the Right, Sunlight Clearing in the Center) -->
+      <img
+        src={`${base}/images/hero-goldenlife.png`}
+        alt="골든라이프 - 행복한 시니어 부부의 황금빛 노후 산책"
+        class="absolute inset-0 w-full h-full object-cover object-[78%_center] md:object-[82%_center] lg:object-right select-none"
+        loading="eager"
+        width="1024"
+        height="341"
+      />
+
+      <!-- 2. Warm Sunlight Gradient Overlay (Clear in Center-Left for Readability, Transparent on Right for Senior Couple) -->
+      <div class="absolute inset-0 bg-gradient-to-r from-[#FAF8F5]/95 via-[#FAF8F5]/85 sm:via-[#FAF8F5]/70 md:via-[#FAF8F5]/55 to-transparent"></div>
+      
+      <!-- Mobile Bottom Subtle Gradient for Small Screens -->
+      <div class="absolute inset-0 bg-gradient-to-t from-[#FAF8F5]/80 via-transparent to-transparent sm:hidden"></div>
+
+      <!-- 3. Foreground Content & Menus placed directly in the Center Clearing Area -->
+      <div class="relative z-10 w-full max-w-xl sm:max-w-2xl lg:max-w-3xl px-5 sm:px-8 md:px-12 py-8 sm:py-10 flex flex-col justify-center text-left">
+        
+        <!-- Slogan Badge -->
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-200/90 text-amber-950 border border-amber-400/80 text-xs sm:text-sm font-black mb-3.5 sm:mb-4 w-fit shadow-xs backdrop-blur-xs">
+          <span>✨ {siteConfig.site.slogan}</span>
+        </div>
+
+        <!-- Main Title -->
+        <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-950 tracking-tight leading-tight mb-3 sm:mb-4 drop-shadow-2xs">
+          {siteConfig.site.shortName} <span class="text-amber-800 underline decoration-amber-400 decoration-wavy underline-offset-8">시니어 백과</span>
+        </h1>
+
+        <!-- Slogan Description -->
+        <p class="text-base sm:text-lg lg:text-xl text-slate-800 font-bold leading-relaxed mb-6 sm:mb-8 max-w-xl drop-shadow-2xs">
+          기초연금·정부복지 혜택부터 은퇴 절세 상식, 100세 관절·혈관 건강까지 어르신의 행복하고 든든한 황금빛 삶을 함께합니다.
+        </p>
+
+        <!-- Category Menu Pills directly inside the Clearing Area -->
+        <div class="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          {categories.map((cat, idx) => (
+            <a
+              href={cat.href}
+              class={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-black text-sm sm:text-base border-2 shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 ${
+                idx === 0
+                  ? 'bg-amber-700 hover:bg-amber-800 text-white border-amber-800 shadow-amber-900/20'
+                  : 'bg-white/95 hover:bg-amber-700 hover:text-white text-slate-900 border-amber-300/90 hover:border-amber-700 backdrop-blur-sm'
+              }`}
+            >
+              {cat.name}
+            </a>
+          ))}
+        </div>
+
+        <!-- Bottom Guidance Badge -->
+        <div class="mt-5 sm:mt-6 flex items-center gap-2 text-xs sm:text-sm text-amber-950/80 font-extrabold">
+          <span class="inline-block w-2 h-2 rounded-full bg-amber-600 animate-pulse"></span>
+          <span>어르신을 위한 맞춤형 복지·건강 실전 매거진</span>
+        </div>
+
       </div>
     </div>
   </section>
