@@ -1,5 +1,7 @@
 import os
 import glob
+import json
+import random
 import subprocess
 from datetime import datetime
 from typing import Dict, Any
@@ -10,6 +12,11 @@ class PerformanceTracker:
     """
 
     def __init__(self, config: Dict[str, Any]):
+        try:
+            from integrations.telegram_bot import _load_env_file
+            _load_env_file()
+        except Exception:
+            pass
         self.config = config
         self.content_dir = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "..", config.get("github", {}).get("blog_content_dir", "../blog-frontend/src/content/blog"))
