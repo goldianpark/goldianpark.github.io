@@ -6,9 +6,9 @@ from typing import Dict, Any, Optional
 
 def _load_env_file():
     env_paths = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "../config/.env")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), ".env")),
-        os.path.expanduser("~/auto_blog_system/automation-pipeline/config/.env")
     ]
     for path in env_paths:
         if os.path.exists(path):
