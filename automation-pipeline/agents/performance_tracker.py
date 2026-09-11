@@ -103,87 +103,119 @@ class PerformanceTracker:
         total_posts = len(posts)
         today_posts_count = len([p for p in posts if p.get("date") == today_str])
 
-        if today_str in history:
-            res = history[today_str]
-            res["sources"] = self.get_traffic_sources_status()
-            return res
-
-        # 어제 데이터 참조
-        yesterday_data = history.get(yesterday_str, {})
-        seed_val = int(today_str.replace("-", ""))
-        random.seed(seed_val)
-
-        if yesterday_data:
-            y_pv = yesterday_data.get("today_views", max(80, total_posts * 35))
-            growth_factor = random.uniform(1.06, 1.16)
-            today_pv = int(y_pv * growth_factor)
-            growth_vs_yesterday = round((growth_factor - 1.0) * 100, 1)
-        else:
-            today_pv = int(total_posts * 38 + random.randint(60, 130))
-            growth_vs_yesterday = round(random.uniform(9.5, 16.0), 1)
-
-        today_uv = int(today_pv * random.uniform(0.33, 0.43))
-        today_clicks = int(today_pv * random.uniform(0.065, 0.115))
-        prev_cumulative = history.get(yesterday_str, {}).get("cumulative_views", total_posts * 360)
-        cumulative_views = prev_cumulative + today_pv
-
-        # 카테고리별 유입 점유율
-        cat_counts = {}
-        for p in posts:
-            c = p.get("category", "기타")
-            cat_counts[c] = cat_counts.get(c, 0) + 1
-
-        cat_views = {}
-        total_cat_posts = sum(cat_counts.values()) or 1
-        for c, cnt in cat_counts.items():
-            ratio = cnt / total_cat_posts
-            c_pv = int(today_pv * ratio * random.uniform(0.92, 1.08))
-            c_clicks = max(1, int(c_pv * random.uniform(0.06, 0.11)))
-            cat_views[c] = {
-                "views": c_pv,
-                "clicks": c_clicks,
-                "ratio": round((c_pv / max(1, today_pv)) * 100, 1)
-            }
-
-        # 오늘 인기 게시글 TOP 3~5
-        top_posts = []
-        selected_posts = posts[:min(5, len(posts))]
-        for i, p in enumerate(selected_posts):
-            weight = max(0.12, 0.32 - (i * 0.05))
-            post_pv = max(18, int(today_pv * weight * random.uniform(0.9, 1.1)))
-            post_clicks = max(2, int(post_pv * random.uniform(0.07, 0.13)))
-            top_posts.append({
-                "title": p.get("title", ""),
-                "slug": p.get("slug", ""),
-                "category": p.get("category", ""),
-                "views": post_pv,
-                "clicks": post_clicks
-            })
-
+        # 1. 3대 실측 소스 상태 실시간 조회
         sources = self.get_traffic_sources_status()
-
-        # 만약 GitHub Traffic API 실측치가 있으면 우선 반영
         gh = sources.get("github", {})
-        if gh.get("status") == "🟢 실측 연동됨" and gh.get("today_views", 0) > 0:
-            today_pv = gh["today_views"]
-            today_uv = gh.get("today_uniques", today_uv)
-            today_clicks = int(today_pv * 0.08)
-            cumulative_views = gh.get("total_views_14d", cumulative_views)
+        is_gh_active = (gh.get("status") == "🟢 실측 연동됨")
 
-        today_data = {
-            "date": today_str,
-            "today_views": today_pv,
-            "today_uv": today_uv,
-            "today_clicks": today_clicks,
-            "ctr": round((today_clicks / max(1, today_pv)) * 100, 2),
-            "cumulative_views": cumulative_views,
-            "total_posts": total_posts,
-            "today_posts": today_posts_count,
-            "category_views": cat_views,
-            "top_posts": top_posts,
-            "growth_vs_yesterday": growth_vs_yesterday,
-            "sources": sources
-        }
+        if is_gh_active:
+            # 🟢 [실측 연동 모드] GitHub 공식 14일치 및 당일 실측치 100% 반영
+            today_pv = gh.get("today_views", 0)
+            today_uv = gh.get("today_uniques", 0)
+            cumulative_views = gh.get("total_views_14d", 0)
+            total_uniques_14d = gh.get("total_uniques_14d", 0)
+            latest_views = gh.get("latest_active_views", 0)
+            latest_date = gh.get("latest_active_date", "")
+
+            # 실측 방문 기반 클릭수 산출 (실제 PV 기준)
+            today_clicks = max(0, int(today_pv * 0.08))
+            ctr = round((today_clicks / max(1, today_pv)) * 100, 2) if today_pv > 0 else 0.0
+
+            # 카테고리별 점유율 (게시글 비중 및 실측치 기준)
+            cat_counts = {}
+            for p in posts:
+                c = p.get("category", "기타")
+                cat_counts[c] = cat_counts.get(c, 0) + 1
+
+            cat_views = {}
+            total_cat_posts = sum(cat_counts.values()) or 1
+            for c, cnt in cat_counts.items():
+                ratio = round((cnt / total_cat_posts) * 100, 1)
+                c_pv = int(today_pv * (cnt / total_cat_posts))
+                cat_views[c] = {
+                    "views": c_pv,
+                    "clicks": max(0, int(c_pv * 0.08)),
+                    "ratio": ratio
+                }
+
+            # 인기 글 TOP 3
+            top_posts = []
+            selected_posts = posts[:min(3, len(posts))]
+            for i, p in enumerate(selected_posts):
+                top_posts.append({
+                    "title": p.get("title", ""),
+                    "slug": p.get("slug", ""),
+                    "category": p.get("category", ""),
+                    "views": max(0, today_pv // (i + 2)) if today_pv > 0 else 0,
+                    "clicks": max(0, today_clicks // (i + 2)) if today_clicks > 0 else 0
+                })
+
+            today_data = {
+                "date": today_str,
+                "is_measured": True,
+                "today_views": today_pv,
+                "today_uv": today_uv,
+                "today_clicks": today_clicks,
+                "ctr": ctr,
+                "cumulative_views": cumulative_views,
+                "total_uniques_14d": total_uniques_14d,
+                "latest_active_date": latest_date,
+                "latest_active_views": latest_views,
+                "total_posts": total_posts,
+                "today_posts": today_posts_count,
+                "category_views": cat_views,
+                "top_posts": top_posts,
+                "growth_vs_yesterday": 0.0,
+                "sources": sources
+            }
+        else:
+            # ⏳ [실측 연동 대기 모드] 토큰 미등록 시의 추정 통계
+            today_pv = int(total_posts * 12 + random.randint(10, 30))
+            today_uv = int(today_pv * 0.35)
+            today_clicks = int(today_pv * 0.07)
+            cumulative_views = total_posts * 150 + today_pv
+
+            cat_counts = {}
+            for p in posts:
+                c = p.get("category", "기타")
+                cat_counts[c] = cat_counts.get(c, 0) + 1
+
+            cat_views = {}
+            total_cat_posts = sum(cat_counts.values()) or 1
+            for c, cnt in cat_counts.items():
+                ratio = round((cnt / total_cat_posts) * 100, 1)
+                c_pv = int(today_pv * (cnt / total_cat_posts))
+                cat_views[c] = {
+                    "views": c_pv,
+                    "clicks": int(c_pv * 0.07),
+                    "ratio": ratio
+                }
+
+            top_posts = []
+            for i, p in enumerate(posts[:3]):
+                top_posts.append({
+                    "title": p.get("title", ""),
+                    "slug": p.get("slug", ""),
+                    "category": p.get("category", ""),
+                    "views": int(today_pv * (0.4 - i * 0.1)),
+                    "clicks": int(today_clicks * (0.4 - i * 0.1))
+                })
+
+            today_data = {
+                "date": today_str,
+                "is_measured": False,
+                "today_views": today_pv,
+                "today_uv": today_uv,
+                "today_clicks": today_clicks,
+                "ctr": round((today_clicks / max(1, today_pv)) * 100, 2),
+                "cumulative_views": cumulative_views,
+                "total_posts": total_posts,
+                "today_posts": today_posts_count,
+                "category_views": cat_views,
+                "top_posts": top_posts,
+                "growth_vs_yesterday": 0.0,
+                "sources": sources
+            }
 
         history[today_str] = today_data
         try:
@@ -216,7 +248,14 @@ class PerformanceTracker:
                 with urllib.request.urlopen(req, timeout=8) as resp:
                     g_data = json.loads(resp.read().decode())
                     today_str = datetime.now().strftime("%Y-%m-%d")
-                    today_view = next((v for v in g_data.get("views", []) if v.get("timestamp", "").startswith(today_str)), None)
+                    views_list = g_data.get("views", [])
+                    today_view = next((v for v in views_list if v.get("timestamp", "").startswith(today_str)), None)
+                    
+                    recent_with_views = [v for v in views_list if v.get("count", 0) > 0]
+                    latest_active = recent_with_views[-1] if recent_with_views else {}
+                    latest_date = latest_active.get("timestamp", "")[:10]
+                    latest_count = latest_active.get("count", 0)
+
                     github_result = {
                         "name": "GitHub Pages Traffic API",
                         "status": "🟢 실측 연동됨",
@@ -224,6 +263,8 @@ class PerformanceTracker:
                         "today_uniques": today_view.get("uniques", 0) if today_view else 0,
                         "total_views_14d": g_data.get("count", 0),
                         "total_uniques_14d": g_data.get("uniques", 0),
+                        "latest_active_date": latest_date,
+                        "latest_active_views": latest_count,
                         "detail": f"14일간 누적 {g_data.get('count', 0)} 뷰 ({g_data.get('uniques', 0)} 순방문)"
                     }
             except Exception as e:
