@@ -151,18 +151,13 @@
     "today_uv": 0,
     "today_clicks": 0,
     "ctr": 0.0,
-    "cumulative_views": 30,
+    "cumulative_views": 32,
     "total_uniques_14d": 1,
-    "latest_active_date": "2026-09-09",
-    "latest_active_views": 5,
+    "latest_active_date": "2026-09-11",
+    "latest_active_views": 2,
     "total_posts": 52,
-    "today_posts": 3,
+    "today_posts": 52,
     "category_views": {
-      "연금 & 절세 상식": {
-        "views": 0,
-        "clicks": 0,
-        "ratio": 36.5
-      },
       "시니어 건강 & 일상": {
         "views": 0,
         "clicks": 0,
@@ -172,27 +167,32 @@
         "views": 0,
         "clicks": 0,
         "ratio": 32.7
+      },
+      "연금 & 절세 상식": {
+        "views": 0,
+        "clicks": 0,
+        "ratio": 36.5
       }
     },
     "top_posts": [
       {
-        "title": "국민연금 조기수령 손익분기점 계산: 나이별 감액률과 건강보험료 피부양자 탈락 방지 가이드",
-        "slug": "2026-09-12-passive-income-4920",
-        "category": "연금 & 절세 상식",
-        "views": 0,
-        "clicks": 0
-      },
-      {
-        "title": "국민연금 조기수령 vs 늦게 받기 손익분기점 나이 계산법 (건보료 피부양자 탈락 피하는 팁)",
-        "slug": "2026-09-12-vs",
-        "category": "연금 & 절세 상식",
-        "views": 0,
-        "clicks": 0
-      },
-      {
-        "title": "2025-2026 노인 무릎 인공관절 수술비 지원 자격과 신청방법 (한쪽 120만원 지원, 노인의료나눔재단)",
-        "slug": "2026-09-12-2025-2026-120",
+        "title": "치매 초기 증상 5가지 자가진단표와 보건소 치매안심센터 무료 검진 총정리",
+        "slug": "2026-09-07-5",
         "category": "시니어 건강 & 일상",
+        "views": 0,
+        "clicks": 0
+      },
+      {
+        "title": "치매 국가책임제 혜택 총정리: 실종 예방 배회감지기 신청부터 무료 조기검진까지",
+        "slug": "2026-09-10-passive-income-6485",
+        "category": "정부지원금 & 복지",
+        "views": 0,
+        "clicks": 0
+      },
+      {
+        "title": "은퇴 부부를 위한 주택연금 vs 농지연금 월 수령액 및 혜택 완벽 비교",
+        "slug": "2026-09-09-vs",
+        "category": "연금 & 절세 상식",
         "views": 0,
         "clicks": 0
       }
@@ -204,11 +204,11 @@
         "status": "🟢 실측 연동됨",
         "today_views": 0,
         "today_uniques": 0,
-        "total_views_14d": 30,
+        "total_views_14d": 32,
         "total_uniques_14d": 1,
-        "latest_active_date": "2026-09-09",
-        "latest_active_views": 5,
-        "detail": "14일간 누적 30 뷰 (1 순방문)"
+        "latest_active_date": "2026-09-11",
+        "latest_active_views": 2,
+        "detail": "14일간 누적 32 뷰 (1 순방문)"
       },
       "goatcounter": {
         "name": "GoatCounter (초경량 실시간)",

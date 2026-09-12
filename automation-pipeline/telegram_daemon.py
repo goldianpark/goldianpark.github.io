@@ -1182,14 +1182,29 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         queue = DraftApprovalQueue()
         draft = queue.get_draft(target_id)
         if draft:
-            content = draft.get("article", {}).get("markdown_content", "본문 없음")
-            if len(content) > 3500:
-                content = content[:3500] + "\n\n... (분량 초과로 일부 생략되었습니다) ..."
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"📖 <b>[본문 초안 전문 미리보기 - {draft.get('title')}]</b>\n\n{content}",
-                parse_mode="HTML"
+            from html import escape
+            raw_content = draft.get("article", {}).get("markdown_content", "본문 없음")
+            # 본문 설명 이미지 figure 태그를 텔레그램 가독성 텍스트로 변환
+            display_content = re.sub(
+                r'<!-- article-illustration:[^>]+ -->[\s\S]*?<figcaption[^>]*>([\s\S]*?)</figcaption>[\s\S]*?<!-- /article-illustration:[^>]+ -->',
+                r'\n🖼️ <i>[본문 설명 이미지: \1]</i>\n',
+                raw_content
             )
+            display_content = re.sub(r'<figure[^>]*>[\s\S]*?</figure>', '', display_content)
+            display_content = re.sub(r'<img[^>]*>', '', display_content)
+            if len(display_content) > 3500:
+                display_content = display_content[:3500] + "\n\n... (분량 초과로 일부 생략되었습니다) ..."
+            try:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"📖 <b>[본문 초안 전문 미리보기 - {escape(draft.get('title', ''))}]</b>\n\n{display_content}",
+                    parse_mode="HTML"
+                )
+            except Exception:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"📖 [본문 초안 전문 미리보기 - {draft.get('title', '')}]\n\n{display_content}"
+                )
         else:
             await context.bot.send_message(chat_id=chat_id, text="⚠️ 해당 초안을 찾을 수 없습니다.")
         return

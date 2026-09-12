@@ -130,6 +130,39 @@ def run_auto_pipeline(config: dict, auto_approve: bool = False, target_category:
     article = writer.write_article(selected_topic)
     print(f"✅ 글 작성 완료! 제목: {article.get('title', '')}")
 
+    # 2-1단계: 썸네일 & 본문 설명 이해용 이미지 2종 자동 생성
+    print("\n🎨 [2-1단계: 썸네일 & 본문 설명 이해용 이미지 2종 자동 생성 중...]")
+    publisher = GitHubPublisher(config)
+    slug = article.get("slug") or publisher.generate_slug(article.get("title", ""), article.get("category", ""))
+    article["slug"] = slug
+
+    # 썸네일 생성
+    try:
+        from modules.thumbnail_generator import generate_thumbnail_for_post
+        post_data = {
+            "slug": slug,
+            "title": article.get("title", ""),
+            "description": article.get("description", ""),
+            "category": article.get("category", "시니어 건강 & 일상"),
+            "tags": article.get("tags", [])
+        }
+        thumb_url = generate_thumbnail_for_post(post_data)
+        article["heroImage"] = thumb_url
+        print(f"  🖼️ 고해상도 썸네일 생성 완료: {thumb_url}")
+    except Exception as e:
+        print(f"  ⚠️ 썸네일 생성 예외: {e}")
+        article["heroImage"] = f"/images/thumbnails/{slug}.svg"
+
+    # 본문 설명 이해용 이미지 2개 생성 및 삽입
+    try:
+        from modules.article_image_generator import generate_and_integrate_article_images
+        updated_content, images_meta = generate_and_integrate_article_images(article, slug)
+        article["markdown_content"] = updated_content
+        article["article_images"] = images_meta
+        print(f"  📸 본문 설명 이미지 {len(images_meta)}개 생성 및 본문 삽입 완료!")
+    except Exception as e:
+        print(f"  ⚠️ 본문 이미지 생성 예외: {e}")
+
     # 3단계: Gemini 3.1 Pro (Thinking Effort: High) 독립 감수 에이전트 검증
     print("\n🧐 [3단계: AI 편집 의견 요청 (사실 확인 및 발행 승인 아님)]")
     review = reviewer.review_article(article, selected_topic)

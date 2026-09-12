@@ -20,7 +20,16 @@ class GitHubPublisher:
 
     def generate_slug(self, title, category="general"):
         words = re.findall(r"[a-zA-Z0-9]+", title.lower())
-        keyword = "-".join(words[:4]) if words else f"post-{time.time_ns()}"
+        meaningful_words = [w for w in words if not w.isdigit() or len(w) > 2]
+        if len(meaningful_words) >= 2:
+            keyword = "-".join(words[:4])
+        else:
+            import hashlib
+            h = hashlib.md5(title.encode()).hexdigest()[:6]
+            if words:
+                keyword = f"{'-'.join(words[:2])}-{h}"
+            else:
+                keyword = f"post-{h}"
         return f"{datetime.now():%Y-%m-%d}-{keyword}"
 
     def _path(self, slug):
@@ -64,6 +73,21 @@ class GitHubPublisher:
         for key in ("heroImage", "summaryCards"):
             if key in article:
                 data[key] = article[key]
+        if "heroImage" not in data or not data["heroImage"] or data["heroImage"] == "/images/default-hero.svg":
+            try:
+                from modules.thumbnail_generator import generate_thumbnail_for_post
+                slug = article.get("slug") or self.generate_slug(article.get("title", ""), article.get("category", "general"))
+                post_data = {
+                    "slug": slug,
+                    "title": article.get("title", ""),
+                    "description": article.get("description", ""),
+                    "category": article.get("category", "시니어 건강 & 일상"),
+                    "tags": article.get("tags", [])
+                }
+                data["heroImage"] = generate_thumbnail_for_post(post_data)
+            except Exception:
+                slug = article.get("slug") or self.generate_slug(article.get("title", ""), article.get("category", "general"))
+                data["heroImage"] = f"/images/thumbnails/{slug}.svg"
         if existing is not None:
             data["updatedDate"] = datetime.now().strftime("%Y-%m-%d")
             data.pop("reviewStatus", None)
@@ -79,7 +103,7 @@ class GitHubPublisher:
         path.parent.mkdir(parents=True, exist_ok=True)
         self._save(path, article, self._metadata(article))
         if self.auto_commit:
-            self._git_commit_and_push(str(path), article["title"])
+            self._git_commit_and_push(str(path), article["title"], slug=slug)
         # A failed Git operation must not mark a keyword as published.
         if pre_commit_hook:
             pre_commit_hook(slug)
@@ -100,6 +124,14 @@ class GitHubPublisher:
             old_path.unlink()
         if self.auto_commit:
             paths = [str(new_path)] + ([str(old_path)] if old_path != new_path else [])
+            # 썸네일 & 본문 이미지도 포함
+            thumb_path = Path(self.repo_root) / f"blog-frontend/public/images/thumbnails/{final_slug}.svg"
+            if thumb_path.exists():
+                paths.append(str(thumb_path))
+            article_img_dir = Path(self.repo_root) / "blog-frontend/public/images/articles"
+            if article_img_dir.exists():
+                for img_file in article_img_dir.glob(f"*{final_slug}*.webp"):
+                    paths.append(str(img_file))
             self._commit_paths(paths, f"fix(blog): update post - {article['title'][:60]}")
         return str(new_path), final_slug
 
@@ -109,8 +141,17 @@ class GitHubPublisher:
         frontmatter = yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False)
         path.write_text(f"---\n{frontmatter}---\n\n{article['markdown_content']}\n", encoding="utf-8")
 
-    def _git_commit_and_push(self, filepath, title):
-        self._commit_paths([filepath], f"feat(blog): publish new post - {title[:60]}")
+    def _git_commit_and_push(self, filepath, title, slug=None):
+        paths = [filepath]
+        if slug:
+            thumb_path = Path(self.repo_root) / f"blog-frontend/public/images/thumbnails/{slug}.svg"
+            if thumb_path.exists():
+                paths.append(str(thumb_path))
+            article_img_dir = Path(self.repo_root) / "blog-frontend/public/images/articles"
+            if article_img_dir.exists():
+                for img_file in article_img_dir.glob(f"*{slug}*.webp"):
+                    paths.append(str(img_file))
+        self._commit_paths(paths, f"feat(blog): publish new post - {title[:60]}")
 
     def _commit_paths(self, paths, message):
         # No broad `git add -A`, ignored errors, or automatic history rewrite.

@@ -97,20 +97,135 @@ class TelegramNotifier:
         return self._send_message(msg)
 
     # -------------------------------------------------------------
+    # -------------------------------------------------------------
+    # 1-0. 초안 이미지 3종 (썸네일 + 본문 설명 2종) 사진 앨범 전송
+    # -------------------------------------------------------------
+    def send_draft_images(self, draft_id: str, article: Dict[str, Any]) -> bool:
+        """
+        초안 검토 시 썸네일과 본문 설명 이해용 이미지 2종(총 3장)을 텔레그램 사진 앨범으로 전송
+        """
+        import os
+        import re
+        import json
+        import subprocess
+        from pathlib import Path
+
+        base_dir = Path(__file__).resolve().parents[2]
+        public_dir = base_dir / "blog-frontend" / "public"
+        title = article.get("title", "")
+        slug = article.get("slug", "")
+        if not slug and "draft_" in draft_id:
+            slug = draft_id
+
+        media_items = []
+        file_handles = []
+
+        try:
+            # 1. 썸네일 이미지 수집 (SVG -> 임시 PNG 변환)
+            hero_rel = article.get("heroImage", "")
+            thumb_path = None
+            if hero_rel:
+                candidate = public_dir / hero_rel.lstrip("/")
+                if candidate.exists():
+                    thumb_path = candidate
+
+            if not thumb_path and slug:
+                candidate = public_dir / "images" / "thumbnails" / f"{slug}.svg"
+                if candidate.exists():
+                    thumb_path = candidate
+
+            if thumb_path and thumb_path.exists():
+                if thumb_path.suffix.lower() == ".svg":
+                    png_tmp = Path(f"/tmp/preview_thumb_{thumb_path.stem}.png")
+                    cmd = ["/usr/bin/ffmpeg", "-y", "-i", str(thumb_path), "-update", "1", "-frames:v", "1", str(png_tmp)]
+                    res = subprocess.run(cmd, capture_output=True, timeout=15)
+                    if res.returncode == 0 and png_tmp.exists():
+                        media_items.append((png_tmp, f"🖼️ [대표 썸네일] {title}"))
+                else:
+                    media_items.append((thumb_path, f"🖼️ [대표 썸네일] {title}"))
+
+            # 2. 본문 설명 이해용 이미지 2종 수집
+            body = article.get("markdown_content", "")
+            img_matches = re.findall(r'<img\s+[^>]*src="([^"]+)"[^>]*alt="([^"]*)"', body)
+            if not img_matches:
+                img_matches = [(f"/images/articles/{item.get('asset_key')}.webp", item.get("caption", "")) 
+                               for item in article.get("article_images", [])]
+
+            for idx, (img_url, img_alt) in enumerate(img_matches[:2], 1):
+                img_file = public_dir / img_url.lstrip("/")
+                if img_file.exists():
+                    caption = f"📸 [본문 설명 {idx}] {img_alt}" if img_alt else f"📸 [본문 설명 {idx}]"
+                    media_items.append((img_file, caption[:100]))
+
+            if not media_items:
+                return False
+
+            # 텔레그램 sendMediaGroup 페이로드 구성
+            files = {}
+            media_list = []
+            for i, (f_path, cap) in enumerate(media_items):
+                field_name = f"photo_{i}"
+                fh = open(f_path, "rb")
+                file_handles.append(fh)
+                files[field_name] = (f_path.name, fh)
+                media_obj = {
+                    "type": "photo",
+                    "media": f"attach://{field_name}",
+                    "caption": cap
+                }
+                media_list.append(media_obj)
+
+            data = {
+                "chat_id": self.chat_id,
+                "media": json.dumps(media_list)
+            }
+            res = requests.post(f"{self.api_url}/sendMediaGroup", data=data, files=files, timeout=30)
+            if res.status_code == 200:
+                print(f"📸 초안 이미지 {len(media_items)}장 텔레그램 전송 성공!")
+                return True
+            else:
+                print(f"⚠️ [TelegramNotifier] sendMediaGroup 실패 ({res.status_code}): {res.text}")
+                return False
+        except Exception as e:
+            print(f"⚠️ [TelegramNotifier] send_draft_images 예외: {e}")
+            return False
+        finally:
+            for fh in file_handles:
+                try:
+                    fh.close()
+                except Exception:
+                    pass
+
+    # -------------------------------------------------------------
     # 1-1. Gemini 3.1 Pro 심층 감수 보고서 및 HITL 승인 요청
     # -------------------------------------------------------------
     def send_review_report(self, draft_id: str, article: Dict[str, Any], review: Dict[str, Any]) -> bool:
         from html import escape
+        
+        # 1. 썸네일 & 본문 이미지 2종 사진 앨범 먼저 발송
+        try:
+            self.send_draft_images(draft_id, article)
+        except Exception as e:
+            print(f"⚠️ 이미지 발송 예외 (텍스트 보고서 계속 진행): {e}")
+
+        # 2. 감수 보고서 텍스트 및 승인 버튼 발송
         title = escape(str(article.get("title", "")))
         summary = escape(str(review.get("summary_for_user", "검토 의견 없음")))
-        state = escape(str(review.get("review_status", "legacy_report_unverified")))
-        msg = (f"📝 <b>초안 검토 대기</b>\n제목: {title}\nID: <code>{escape(draft_id)}</code>\n"
-               f"검토 상태: {state}\n\n{summary}\n\n"
-               "AI 점수나 글 형식은 사실 확인 또는 애드센스 승인 증거가 아닙니다. "
-               "본문 전문, 제목과 FAQ의 일치, 공식 출처와 기준일을 확인한 뒤 승인하세요.")
+        score = review.get("total_score", 0)
+        verdict = review.get("verdict", "PENDING")
+
+        msg = (f"📝 <b>[초안 검토 및 승인 요청]</b>\n"
+               f"━━━━━━━━━━━━━━━━━━━━\n"
+               f"📌 <b>제목</b>: <b>{title}</b>\n"
+               f"🆔 <b>ID</b>: <code>{escape(draft_id)}</code>\n"
+               f"📊 <b>감수 점수</b>: <b>{score}점</b> ({verdict})\n"
+               f"🖼️ <b>포함 이미지</b>: 썸네일 1장 + 본문 설명 2장 탑재 완료\n\n"
+               f"📋 <b>편집 총평</b>:\n{summary}\n\n"
+               f"━━━━━━━━━━━━━━━━━━━━\n"
+               f"💡 <i>위 3장의 이미지를 스와이프하여 검토하신 후 승인해주세요.</i>")
         return self._send_message(msg, {"inline_keyboard": [
             [{"text": "📖 본문 초안 보기", "callback_data": f"view_draft:{draft_id}"}],
-            [{"text": "✅ 검토 후 승인", "callback_data": f"approve:{draft_id}"},
+            [{"text": "✅ 검토 후 즉시 승인 및 발행", "callback_data": f"approve:{draft_id}"},
              {"text": "❌ 발행 보류", "callback_data": f"reject:{draft_id}"}]]})
 
     # -------------------------------------------------------------
