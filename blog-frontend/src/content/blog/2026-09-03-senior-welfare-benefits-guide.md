@@ -64,6 +64,14 @@ faqs:
 
 ---
 
+
+<!-- article-illustration:golden-2026-09-03-senior-welfare-benefits-guide-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-03-senior-welfare-benefits-guide-01.webp" alt="교통카드와 휴대전화, 생활요금 고지서, 문화시설 안내지를 모아 둔 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">교통·통신·의료처럼 생활 분야를 나누면 확인할 지원 제도를 찾기 쉽습니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-03-senior-welfare-benefits-guide-01 -->
+
 ## 3. 생활비 & 통신비 감면 혜택
 
 * **이동통신요금(휴대폰비) 월 최대 12,100원 감면**:

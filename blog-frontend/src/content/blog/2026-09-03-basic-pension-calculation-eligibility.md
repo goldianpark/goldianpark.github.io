@@ -52,6 +52,14 @@ faqs:
 
 ---
 
+
+<!-- article-illustration:golden-2026-09-03-basic-pension-calculation-eligibility-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-03-basic-pension-calculation-eligibility-01.webp" alt="소득 자료와 예금·주택 관련 자료를 나누어 정리하는 책상" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">기초연금 상담 전에는 소득 자료와 재산 자료를 나누어 챙깁니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-03-basic-pension-calculation-eligibility-01 -->
+
 ## 2. 소득인정액 산정 공식 (어떻게 계산할까?)
 
 기초연금에서 말하는 '소득인정액'은 통장에 찍히는 월급만을 뜻하지 않습니다. **`소득평가액 + 재산의 월 소득환산액`**을 합쳐서 계산합니다.

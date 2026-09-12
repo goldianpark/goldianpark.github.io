@@ -125,6 +125,14 @@ faqs:
 
 ---
 
+
+<!-- article-illustration:golden-2026-09-10-passive-income-892-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-10-passive-income-892-01.webp" alt="안전 활동 지원을 준비하며 서류와 편한 신발, 조끼를 챙기는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">지역 안전 활동의 모집 안내를 읽고 맡게 될 일을 확인합니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-10-passive-income-892-01 -->
+
 ## 5. 온·오프라인 신청 절차 및 필요 서류
 
 이러한 시니어 단기 알바는 정해진 모집 기간을 놓치면 꼬박 1년을 기다려야 합니다.

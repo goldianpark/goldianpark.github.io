@@ -39,6 +39,14 @@ updatedDate: '2026-09-12'
 
 [동해천곡 공고 상세 페이지](https://apply.lh.or.kr/lhapply/apply/wt/wrtanc/selectWrtancInfo.do?aisTpCd=10&ccrCnntSysDsCd=03&mi=1026&panId=2015122300020610&uppAisTpCd=06)에도 주택형별 보증금과 월 임대료는 ‘공고문 확인’으로 표시되어 있습니다. 검색 결과 요약에 나온 숫자 하나로 월 지출을 계산하기보다 첨부 공고문을 열어 본인에게 해당하는 조건을 찾아야 합니다.
 
+
+<!-- article-illustration:golden-2026-09-08-passive-income-3697-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-08-passive-income-3697-01.webp" alt="주택 모집공고와 달력을 나란히 두고 신청·서류 제출 일정을 구분하는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">모집공고의 접수일과 발표일을 구분해 달력에 적어 둡니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-08-passive-income-3697-01 -->
+
 ## 날짜는 한 줄에 모아 적지 마세요
 
 공고 게시일, 신청일, 서류 제출일, 당첨자 발표일, 계약일은 서로 다른 일정입니다. 아래처럼 용도를 나누어 적어두면 제출 순서를 놓치기 어렵습니다.

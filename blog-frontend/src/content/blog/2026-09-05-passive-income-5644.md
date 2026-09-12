@@ -91,6 +91,14 @@ faqs:
 
 ---
 
+
+<!-- article-illustration:golden-2026-09-05-passive-income-5644-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-05-passive-income-5644-01.webp" alt="약 봉투와 영양제 용기를 한곳에 모아 복용 목록과 함께 보여주는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">평소 먹는 약과 영양제를 한곳에 모아 상담할 때 빠짐없이 알립니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-05-passive-income-5644-01 -->
+
 ## 4. 초보자도 바로 실천하는 안전 복약 4단계 가이드
 
 영양제를 안전하게 복용하고 약물 간섭을 최소화하기 위해 지금 즉시 다음 4단계를 실천해보세요.

@@ -131,6 +131,14 @@ faqs:
 
 ---
 
+
+<!-- article-illustration:golden-2026-09-06-passive-income-2084-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-06-passive-income-2084-01.webp" alt="독서와 이동 등 평소 생활을 설명하며 안과 상담을 받는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">수술 상담에서는 생활에서 불편한 점과 궁금한 내용을 먼저 이야기합니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-06-passive-income-2084-01 -->
+
 ## 4. 초보자도 바로 하는 단계별 수술 및 신청 가이드
 
 부모님이나 본인의 눈 건강을 위해 병원 방문부터 보험금 수령까지 순서대로 따라 해보세요.

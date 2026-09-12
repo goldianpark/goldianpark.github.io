@@ -100,6 +100,14 @@ faqs:
 
 ---
 
+
+<!-- article-illustration:golden-2026-09-10-passive-income-5302-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-10-passive-income-5302-01.webp" alt="상속 관련 가족·재산 자료와 일정 메모를 한곳에 정리하는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">상속재산 조회와 상담에 필요한 자료를 한곳에 모읍니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-10-passive-income-5302-01 -->
+
 ## 4. 신청 절차 완벽 가이드: 온라인 vs 오프라인
 
 상속 재산 조회는 방문하기 편한 읍·면·동 주민센터(오프라인)나 집에서 간편하게 처리하는 정부24(온라인)를 통해 신청할 수 있습니다.

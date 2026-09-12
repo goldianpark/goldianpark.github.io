@@ -92,6 +92,14 @@ faqs:
 
 ---
 
+
+<!-- article-illustration:golden-2026-09-04-passive-income-3411-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-04-passive-income-3411-01.webp" alt="주택 모형과 주택 자료, 상담용 노트를 함께 준비한 책상" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">주택연금 상담에는 주택 관련 자료와 월 생활비 기록을 함께 준비합니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-04-passive-income-3411-01 -->
+
 ## 4. 초보자도 바로 적용할 수 있는 단계별 실천 가이드
 
 주택연금 가입을 결심했다면 아래 4단계를 차근차근 밟아가면 복잡한 절차 없이 손쉽게 신청할 수 있습니다.

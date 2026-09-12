@@ -100,6 +100,14 @@ updatedDate: '2026-09-12'
 
 ---
 
+
+<!-- article-illustration:golden-2026-09-05-passive-income-251-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-05-passive-income-251-01.webp" alt="안과 진료 자료와 비용 내역을 문의하기 위해 서류를 정리한 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">수술 전에 병원과 보험사에 각각 확인할 항목을 정리합니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-05-passive-income-251-01 -->
+
 ## 4. 보험금 분쟁을 막는 수술 전 4대 필수 서류 체크리스트
 
 만약 2016년 이전 실손보험에 가입되어 있어 다초점 렌즈 비용을 청구하고자 하신다면, 수술대에 오르기 전에 반드시 다음 서류를 병원에서 발급받을 수 있는지 확인하셔야 합니다.

@@ -94,6 +94,14 @@ faqs:
 
 ---
 
+
+<!-- article-illustration:golden-2026-09-06-passive-income-9675-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-06-passive-income-9675-01.webp" alt="난방을 준비하며 전기·난방 요금 고지서와 신청 자료를 모아 둔 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">에너지 지원을 문의할 때는 생활요금 고지서와 신청 안내를 함께 챙깁니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-06-passive-income-9675-01 -->
+
 ## 3. 초보자도 5분 만에 끝내는 온·오프라인 신청 절차
 
 에너지바우처는 본인이 직접 주민센터에 방문하기 어려운 경우, 자녀나 대리인이 손쉽게 대신 신청할 수 있도록 다양한 창구를 열어두고 있습니다.

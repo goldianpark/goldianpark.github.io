@@ -74,6 +74,12 @@ def validate_article(article, topic=None):
 
 
 def body_fingerprint(content):
+    # Editorial illustrations are separate assets, not a new article body.
+    # Keep duplicate detection stable when the same text gains an illustration.
+    content = re.sub(
+        r"<!-- article-illustration:([A-Za-z0-9_.-]+) -->[\s\S]*?<!-- /article-illustration:\1 -->",
+        "", content,
+    )
     # Ignore headings/formatting: changing only a title must not create a new article.
     lines = [line for line in content.splitlines() if not line.lstrip().startswith("#")]
     return re.sub(r"[^a-z0-9가-힣]", "", " ".join(lines).lower())

@@ -29,6 +29,14 @@ updatedDate: '2026-09-12'
 
 눈 주변에 발진이 생기거나 시력이 달라진 경우에는 당일 의료기관에 연락해 신속한 진료가 필요하다고 알리세요. 대상포진은 눈과 귀, 얼굴 신경에도 영향을 줄 수 있어 시력·청력 변화나 얼굴 움직임의 이상을 단순한 피부 문제로 넘기지 않아야 합니다. 위 질병관리청 자료에서 관련 합병증을 확인할 수 있습니다.
 
+
+<!-- article-illustration:golden-2026-09-08-passive-income-9290-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-08-passive-income-9290-01.webp" alt="증상이 시작된 시각과 불편한 점을 휴대전화 옆 메모장에 기록하는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">증상이 시작된 시점과 달라진 양상을 적어 진료를 준비합니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-08-passive-income-9290-01 -->
+
 ## 진료 전에 휴대전화나 종이에 적어둘 내용
 
 | 기록할 항목 | 메모 예시 |

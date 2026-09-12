@@ -52,6 +52,14 @@ faqs:
 
 ---
 
+
+<!-- article-illustration:golden-2026-09-03-senior-knee-joint-health-tips-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-03-senior-knee-joint-health-tips-01.webp" alt="등받이 의자와 운동화, 수건을 준비한 정돈된 실내 공간" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">실내 활동을 시작하기 전 주변을 정리하고 편하게 움직일 공간을 확보합니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-03-senior-knee-joint-health-tips-01 -->
+
 ## 2. 🏋️ 집에서 TV 보며 하는 '무릎 통증 제로' 허벅지 운동 3가지
 
 무릎 연골을 지키는 유일한 방패는 바로 **허벅지 앞쪽 근육(대퇴사두근)**입니다. 허벅지 근육이 탄탄하면 체중이 무릎 뼈로 가지 않고 근육이 충격을 대신 흡수해 줍니다.

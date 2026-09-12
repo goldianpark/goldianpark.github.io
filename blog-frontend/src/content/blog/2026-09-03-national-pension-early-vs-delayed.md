@@ -48,6 +48,14 @@ faqs:
 
 ---
 
+
+<!-- article-illustration:golden-2026-09-03-national-pension-early-vs-delayed-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-03-national-pension-early-vs-delayed-01.webp" alt="달력과 생활비 노트를 펼쳐 연금 수령 시점을 비교하는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">연금 시작 시점을 정할 때는 그동안 쓸 생활비도 함께 살펴봅니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-03-national-pension-early-vs-delayed-01 -->
+
 ## 2. 결정적 손익분기점: "몇 살까지 살아야 이득일까?"
 
 정상 연금액이 월 100만 원이라고 가정하고 총수령액을 비교해 보겠습니다.

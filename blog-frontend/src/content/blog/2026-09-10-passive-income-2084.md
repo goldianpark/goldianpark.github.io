@@ -41,6 +41,14 @@ updatedDate: '2026-09-12'
 
 보철 장착 후 3개월 이내 유지관리는 진찰료만 산정하는 기준이 있습니다. 3개월을 넘긴 뒤에는 임플란트 주위 치주질환 처치와 보철 수리의 급여 여부가 달라집니다. 이 기준을 모든 재수술의 무상 보증기간으로 해석하면 안 됩니다. 본인의 치료가 어느 항목에 해당하는지 치과에 확인하세요.
 
+
+<!-- article-illustration:golden-2026-09-10-passive-income-2084-01 -->
+<figure class="article-illustration" style="margin: 2em 0;">
+  <img src="/images/articles/golden-2026-09-10-passive-income-2084-01.webp" alt="기존 임플란트 치료 기록과 새 치료 견적을 나누어 상담하는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">기존 치료 기록을 챙기고 이번 치료에서 달라지는 내용을 확인합니다. AI로 제작한 설명용 이미지입니다.</figcaption>
+</figure>
+<!-- /article-illustration:golden-2026-09-10-passive-income-2084-01 -->
+
 ## 재수술 견적은 처음 치료비와 따로 받으세요
 
 “예전에 보험으로 했으니 이번에도 될 것”이라고 생각하기 쉽습니다. 이번 치료명, 보험으로 처리하는 항목, 별도 부담 항목을 나누어 적은 견적을 요청하세요. 처음 계약에 사후관리 약정이 있었다면 그 문서도 함께 살펴보면 좋습니다.
