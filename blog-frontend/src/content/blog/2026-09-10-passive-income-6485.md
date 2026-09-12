@@ -74,12 +74,12 @@ updatedDate: '2026-09-12'
 ---
 
 
-<!-- article-illustration:golden-2026-09-10-passive-income-6485-01 -->
+<!-- article-illustration:golden-2026-09-10-passive-income-6485-01-corrected -->
 <figure class="article-illustration" style="margin: 2em 0;">
-  <img src="/images/articles/golden-2026-09-10-passive-income-6485-01.webp" alt="어르신과 가족이 작은 위치 확인 기기와 휴대전화의 사용 방식을 함께 살펴보는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <img src="/images/articles/golden-2026-09-10-passive-income-6485-01-corrected.webp" alt="어르신과 가족이 작은 위치 확인 기기와 휴대전화의 사용 방식을 함께 살펴보는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
   <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">위치 확인 기기는 사용하는 사람과 보호자가 함께 사용법을 익힙니다. AI로 제작한 설명용 이미지입니다.</figcaption>
 </figure>
-<!-- /article-illustration:golden-2026-09-10-passive-income-6485-01 -->
+<!-- /article-illustration:golden-2026-09-10-passive-income-6485-01-corrected -->
 
 ## 2. 어르신 실종 예방의 핵심: 배회감지기(GPS)와 안심 2종 세트
 

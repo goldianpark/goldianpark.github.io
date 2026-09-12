@@ -45,12 +45,12 @@ updatedDate: '2026-09-12'
 상담 전에는 최근 급여 내역, 사업소득 관련 자료, 올해 근무한 달과 앞으로의 근무 계획을 준비하세요. 자료를 공개 게시판에 올릴 필요는 없습니다. 공단의 공식 상담에서 어떤 서류가 필요한지 안내받으면 됩니다.
 
 
-<!-- article-illustration:golden-2026-09-12-passive-income-4920-01 -->
+<!-- article-illustration:golden-2026-09-12-passive-income-4920-01-corrected -->
 <figure class="article-illustration" style="margin: 2em 0;">
-  <img src="/images/articles/golden-2026-09-12-passive-income-4920-01.webp" alt="재취업 일정과 생활비 자료를 보며 연금 상담 질문을 정리하는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
+  <img src="/images/articles/golden-2026-09-12-passive-income-4920-01-corrected.webp" alt="재취업 일정과 생활비 자료를 보며 연금 상담 질문을 정리하는 모습" width="1536" height="1024" loading="lazy" decoding="async" style="display: block; width: 100%; max-width: 100%; height: auto; border-radius: 0.75rem;" />
   <figcaption style="margin-top: 0.65em; font-size: 0.95em; line-height: 1.6; color: #475569;">앞으로의 소득 계획과 생활비를 정리해 연금 상담을 준비합니다. AI로 제작한 설명용 이미지입니다.</figcaption>
 </figure>
-<!-- /article-illustration:golden-2026-09-12-passive-income-4920-01 -->
+<!-- /article-illustration:golden-2026-09-12-passive-income-4920-01-corrected -->
 
 ## 재취업 계획도 함께 이야기하세요
 
