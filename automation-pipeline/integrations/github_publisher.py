@@ -1,209 +1,124 @@
+"""Save reviewed articles and propagate Git failures to the approval queue."""
 import os
 import re
 import time
-import yaml
-import subprocess
+from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any
+import subprocess
+import yaml
+from modules.content_validation import validate_article, ContentValidationError, body_fingerprint
+
 
 class GitHubPublisher:
-    """
-    최종 승인된 아티클을 Astro Content Collection 마크다운 파일로 생성하고
-    Git Commit & Push를 통해 GitHub Pages 자동 배포를 트리거하는 모듈
-    """
-
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config):
         self.config = config
-        self.repo_root = config.get("github", {}).get("repo_root", "../")
-        self.content_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", config.get("github", {}).get("blog_content_dir", "../blog-frontend/src/content/blog"))
-        )
+        pipeline_root = Path(__file__).resolve().parents[1]
+        self.repo_root = str((pipeline_root / config.get("github", {}).get("repo_root", "../")).resolve())
+        self.content_dir = str((pipeline_root / config.get("github", {}).get("blog_content_dir", "../blog-frontend/src/content/blog")).resolve())
         self.auto_commit = config.get("github", {}).get("auto_git_commit", True)
         self.auto_push = config.get("github", {}).get("auto_git_push", False)
 
-        os.makedirs(self.content_dir, exist_ok=True)
+    def generate_slug(self, title, category="general"):
+        words = re.findall(r"[a-zA-Z0-9]+", title.lower())
+        keyword = "-".join(words[:4]) if words else f"post-{time.time_ns()}"
+        return f"{datetime.now():%Y-%m-%d}-{keyword}"
 
-    def generate_slug(self, title: str, category: str = "general") -> str:
-        """
-        GitHub Pages 404 방지를 위해 영문 및 날짜 기반의 깔끔한 URL 슬러그 생성
-        """
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        # 영문/숫자 단어 추출
-        ascii_words = re.findall(r"[a-zA-Z0-9]+", title.lower())
-        if ascii_words:
-            keyword_slug = "-".join(ascii_words[:4])
-        else:
-            cat_slug = "ai-tips" if "ai" in category.lower() else ("dev-tips" if "개발" in category else "passive-income")
-            keyword_slug = f"{cat_slug}-{int(time.time()) % 10000}"
+    def _path(self, slug):
+        if not isinstance(slug, str) or not re.fullmatch(r"[a-zA-Z0-9가-힣_-]+", slug):
+            raise ValueError("유효하지 않은 게시글 슬러그")
+        return Path(self.content_dir) / f"{slug}.md"
 
-        return f"{today_str}-{keyword_slug}"
+    @staticmethod
+    def _read_post(path):
+        text = path.read_text(encoding="utf-8")
+        match = re.match(r"\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|$)(.*)\Z", text, re.DOTALL)
+        if match:
+            metadata = yaml.safe_load(match.group(1))
+            return metadata if isinstance(metadata, dict) else {}, match.group(2)
+        return {}, text
 
-    def publish_article(self, article: Dict[str, Any], pre_commit_hook: callable = None) -> str:
-        """
-        승인된 아티클 딕셔너리를 마크다운(.md) 파일로 저장하고 Git 커밋
-        """
-        title = article.get("title", "무제")
-        category = article.get("category", "General")
-        slug = self.generate_slug(title, category)
-        filepath = os.path.join(self.content_dir, f"{slug}.md")
+    def _validate_for_publication(self, article, human_approved, existing_path=None):
+        if human_approved is not True:
+            raise PermissionError("구체적인 초안 본문과 출처에 대한 사람의 승인이 필요합니다.")
+        validate_article(article)
+        fingerprint = body_fingerprint(article["markdown_content"])
+        if not fingerprint:
+            raise ContentValidationError("본문이 비어 있습니다.")
+        # Exact duplicate-body detection is deliberately limited; it is not a semantic/factual audit.
+        for path in Path(self.content_dir).glob("*.md"):
+            if path == existing_path:
+                continue
+            _, body = self._read_post(path)
+            if body_fingerprint(body) == fingerprint:
+                raise ContentValidationError(f"기존 글과 본문이 같습니다: {path.name}")
 
-        frontmatter_data = {
-            "title": title,
-            "description": article.get("description", ""),
-            "pubDate": datetime.now().strftime("%Y-%m-%d"),
-            "category": category,
-            "tags": article.get("tags", []),
-            "author": article.get("author", self.config.get("site", {}).get("author", "골든라이프 편집팀")),
-            "readingTime": article.get("readingTime", "5 min read"),
-            "featured": article.get("featured", False),
-            "draft": False,
-        }
+    def _metadata(self, article, existing=None):
+        data = dict(existing or {})
+        data.update({"title": article["title"], "description": article["description"],
+                     "category": article["category"], "tags": article.get("tags", []),
+                     "pubDate": data.get("pubDate") or article.get("pubDate") or datetime.now().strftime("%Y-%m-%d"),
+                     "author": article.get("author") or data.get("author") or self.config.get("site", {}).get("author", "편집팀"),
+                     "readingTime": article.get("readingTime", "5 min read"),
+                     "featured": article.get("featured", data.get("featured", False)),
+                     "draft": False, "faqs": article.get("faqs", [])})
+        for key in ("heroImage", "summaryCards"):
+            if key in article:
+                data[key] = article[key]
+        if existing is not None:
+            data["updatedDate"] = datetime.now().strftime("%Y-%m-%d")
+            data.pop("reviewStatus", None)
+            data.pop("reviewReason", None)
+        return data
 
-        if "faqs" in article and article["faqs"]:
-            frontmatter_data["faqs"] = article["faqs"]
-
-        # YAML Frontmatter 직렬화
-        yaml_content = yaml.dump(
-            frontmatter_data,
-            allow_unicode=True,
-            default_flow_style=False,
-            sort_keys=False
-        )
-
-        full_content = f"---\n{yaml_content}---\n\n{article.get('markdown_content', '')}\n"
-
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(full_content)
-
-        print(f"📄 마크다운 아티클 생성 완료: {filepath}")
-
-        # Git 커밋 전 후크 실행 (키워드 큐 상태 업데이트 등)
+    def publish_article(self, article, pre_commit_hook=None, *, human_approved=False):
+        self._validate_for_publication(article, human_approved)
+        slug = article.get("slug") or self.generate_slug(article["title"], article["category"])
+        path = self._path(slug)
+        if path.exists():
+            raise FileExistsError(f"이미 있는 슬러그입니다. 기존 글 수정 경로를 사용하세요: {slug}")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._save(path, article, self._metadata(article))
+        if self.auto_commit:
+            self._git_commit_and_push(str(path), article["title"])
+        # A failed Git operation must not mark a keyword as published.
         if pre_commit_hook:
-            try:
-                pre_commit_hook(slug)
-            except Exception as e:
-                print(f"⚠️ pre_commit_hook 실행 중 오류: {e}")
+            pre_commit_hook(slug)
+        return str(path)
 
-        # Git Auto Commit & Push (선택 옵션)
+    def update_existing_article(self, slug, article, new_slug=None, *, human_approved=False):
+        old_path = self._path(slug)
+        if not old_path.exists():
+            raise FileNotFoundError(f"수정할 게시글이 없습니다: {slug}")
+        self._validate_for_publication(article, human_approved, existing_path=old_path)
+        final_slug = new_slug or slug
+        new_path = self._path(final_slug)
+        if new_path != old_path and new_path.exists():
+            raise FileExistsError(f"대상 슬러그가 이미 있습니다: {final_slug}")
+        existing, _ = self._read_post(old_path)
+        self._save(new_path, article, self._metadata(article, existing))
+        if new_path != old_path:
+            old_path.unlink()
         if self.auto_commit:
-            self._git_commit_and_push(filepath, title)
+            paths = [str(new_path)] + ([str(old_path)] if old_path != new_path else [])
+            self._commit_paths(paths, f"fix(blog): update post - {article['title'][:60]}")
+        return str(new_path), final_slug
 
-        return filepath
+    @staticmethod
+    def _save(path, article, metadata):
+        validate_article({**metadata, "markdown_content": article["markdown_content"]})
+        frontmatter = yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False)
+        path.write_text(f"---\n{frontmatter}---\n\n{article['markdown_content']}\n", encoding="utf-8")
 
-    def update_existing_article(self, slug: str, article: Dict[str, Any], new_slug: str = None) -> tuple[str, str]:
-        """
-        기존 슬러그의 마크다운(.md) 파일을 수정된 내용으로 덮어쓰거나 URL(슬러그)을 변경하고 Git 커밋 & Push
-        반환값: (저장된 파일 경로, 최종 슬러그)
-        """
-        old_filepath = os.path.join(self.content_dir, f"{slug}.md")
-        if not os.path.exists(old_filepath):
-            matched = [f for f in os.listdir(self.content_dir) if f.startswith(slug) and f.endswith(".md")]
-            if matched:
-                old_filepath = os.path.join(self.content_dir, matched[0])
-                slug = os.path.splitext(matched[0])[0]
-            else:
-                raise FileNotFoundError(f"수정할 게시글 파일을 찾을 수 없습니다: {slug}.md")
+    def _git_commit_and_push(self, filepath, title):
+        self._commit_paths([filepath], f"feat(blog): publish new post - {title[:60]}")
 
-        final_slug = slug
-        if new_slug:
-            clean_new_slug = re.sub(r"[^a-zA-Z0-9\-_]", "", new_slug.strip().lower())
-            if clean_new_slug and clean_new_slug != slug:
-                final_slug = clean_new_slug
-
-        new_filepath = os.path.join(self.content_dir, f"{final_slug}.md")
-
-        title = article.get("title", "무제")
-        category = article.get("category", "General")
-        pub_date = article.get("pubDate") or datetime.now().strftime("%Y-%m-%d")
-
-        frontmatter_data = {
-            "title": title,
-            "description": article.get("description", ""),
-            "pubDate": pub_date,
-            "category": category,
-            "tags": article.get("tags", []),
-            "author": article.get("author", self.config.get("site", {}).get("author", "골든라이프 편집팀")),
-            "readingTime": article.get("readingTime", "5 min read"),
-            "featured": article.get("featured", False),
-            "draft": False,
-        }
-
-        if "faqs" in article and article["faqs"]:
-            frontmatter_data["faqs"] = article["faqs"]
-
-        yaml_content = yaml.dump(
-            frontmatter_data,
-            allow_unicode=True,
-            default_flow_style=False,
-            sort_keys=False
-        )
-
-        full_content = f"---\n{yaml_content}---\n\n{article.get('markdown_content', '')}\n"
-
-        with open(new_filepath, "w", encoding="utf-8") as f:
-            f.write(full_content)
-
-        # 슬러그(URL)가 변경된 경우 이전 파일 삭제
-        is_renamed = (old_filepath != new_filepath)
-        if is_renamed and os.path.exists(old_filepath):
-            try:
-                os.remove(old_filepath)
-                print(f"🗑️ 이전 파일 삭제 완료: {old_filepath}")
-            except Exception as e:
-                print(f"⚠️ 이전 파일 삭제 실패: {e}")
-
-        print(f"📄 마크다운 아티클 수정 완료: {new_filepath} (슬러그: {final_slug})")
-
-        if self.auto_commit:
-            try:
-                subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", "main"], cwd=self.repo_root, check=False)
-                if is_renamed:
-                    subprocess.run(["git", "add", "-A"], cwd=self.repo_root, check=False)
-                    commit_msg = f"fix(blog): rename/update post from {slug} to {final_slug}"
-                else:
-                    subprocess.run(["git", "add", new_filepath], cwd=self.repo_root, check=False)
-                    commit_msg = f"fix(blog): update post - {title[:30]}"
-
-                subprocess.run(["git", "commit", "-m", commit_msg], cwd=self.repo_root, check=False)
-                if self.auto_push:
-                    push_res = subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, capture_output=True, text=True)
-                    if push_res.returncode != 0:
-                        print(f"⚠️ git push 충돌 감지, rebase 후 재시도: {push_res.stderr.strip()}")
-                        subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", "main"], cwd=self.repo_root, check=False)
-                        subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, check=False)
-            except Exception as e:
-                print(f"[GitHubPublisher] Git 작업 중 알림: {e}")
-
-        return new_filepath, final_slug
-
-    def _git_commit_and_push(self, filepath: str, title: str):
-        """Git 커밋 및 Push 실행 (충돌 방지 rebase 및 autostash 포함)"""
-        try:
-            # 1. 원격 변경사항 사전 병합 (autostash)
-            subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", "main"], cwd=self.repo_root, check=False)
-
-            # 2. 파일 추가 및 커밋 (글 파일 및 keywords.csv 동시 추가)
-            subprocess.run(["git", "add", filepath], cwd=self.repo_root, check=False)
-            csv_path = os.path.join(self.repo_root, "automation-pipeline", "data", "keywords.csv")
-            if os.path.exists(csv_path):
-                subprocess.run(["git", "add", csv_path], cwd=self.repo_root, check=False)
-
-            commit_msg = f"feat(blog): publish new post - {title[:30]}"
-            subprocess.run(["git", "commit", "-m", commit_msg], cwd=self.repo_root, check=False)
-
-            # 3. 원격 Push 및 실패 시 자동 재시도
-            if self.auto_push:
-                print("🚀 GitHub 원격 저장소로 Push 실행 중...")
-                push_res = subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, capture_output=True, text=True)
-                if push_res.returncode != 0:
-                    print(f"⚠️ git push 거부 감지, 원격 rebase 후 재시도: {push_res.stderr.strip()}")
-                    subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", "main"], cwd=self.repo_root, check=False)
-                    push_res2 = subprocess.run(["git", "push", "origin", "main"], cwd=self.repo_root, capture_output=True, text=True)
-                    if push_res2.returncode == 0:
-                        print("✅ rebase 후 GitHub 원격 Push 성공!")
-                    else:
-                        print(f"❌ 최종 GitHub Push 실패: {push_res2.stderr.strip()}")
-                else:
-                    print("✅ GitHub 원격 Push 성공!")
-        except Exception as e:
-            print(f"[GitHubPublisher] Git 작업 중 알림: {e}")
+    def _commit_paths(self, paths, message):
+        # No broad `git add -A`, ignored errors, or automatic history rewrite.
+        subprocess.run(["git", "add", "--", *paths], cwd=self.repo_root, check=True)
+        diff = subprocess.run(["git", "diff", "--cached", "--quiet", "--", *paths], cwd=self.repo_root)
+        if diff.returncode == 1:
+            subprocess.run(["git", "commit", "--only", "-m", message, "--", *paths], cwd=self.repo_root, check=True)
+        elif diff.returncode != 0:
+            raise RuntimeError("Git 변경 확인 실패")
+        if self.auto_push:
+            subprocess.run(["git", "push", "origin", "HEAD:main"], cwd=self.repo_root, check=True)

@@ -1,7 +1,8 @@
 import { getCollection } from 'astro:content';
+import { getCategorySlug } from '../utils/slug';
 
 export async function GET(context: any) {
-  const siteUrl = String(context.site || 'https://absianp.github.io').replace(/\/$/, '');
+  const siteUrl = String(context.site || 'https://goldianpark.github.io').replace(/\/$/, '');
   const posts = await getCollection('blog', ({ data }) => !data.draft);
 
   const staticPages = [
@@ -11,9 +12,10 @@ export async function GET(context: any) {
     { url: '/privacy-policy/', changefreq: 'monthly', priority: '0.5' },
     { url: '/terms/', changefreq: 'monthly', priority: '0.5' },
     { url: '/contact/', changefreq: 'monthly', priority: '0.6' },
-    { url: '/categories/ai-productivity/', changefreq: 'weekly', priority: '0.8' },
-    { url: '/categories/tech-dev/', changefreq: 'weekly', priority: '0.8' },
-    { url: '/categories/side-income/', changefreq: 'weekly', priority: '0.8' },
+    { url: '/categories/', changefreq: 'weekly', priority: '0.8' },
+    ...[...new Set(posts.map(post => getCategorySlug(post.data.category)))].map(slug => ({
+      url: `/categories/${encodeURIComponent(slug)}/`, changefreq: 'weekly', priority: '0.8',
+    })),
   ];
 
   const postPages = posts.map(post => ({

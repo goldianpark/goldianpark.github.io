@@ -39,7 +39,7 @@ jobs:
           import os, re, subprocess
 
           try:
-              cmd_head = ['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD']
+              cmd_head = ['git', 'diff-tree', '--no-commit-id', '--name-only', '--diff-filter=A', '-r', 'HEAD']
               head_files = subprocess.check_output(cmd_head, text=True).splitlines()
           except Exception:
               head_files = []
@@ -52,21 +52,10 @@ jobs:
           if md_in_head:
               is_new = 'true'
               target_file = md_in_head[0]
-          else:
-              try:
-                  cmd_latest = ['git', 'log', '-n', '1', '--name-only', '--diff-filter=A', '--pretty=', '--', 'blog-frontend/src/content/blog/*.md']
-                  out = subprocess.check_output(cmd_latest, text=True).strip().splitlines()
-                  for line in out:
-                      f = line.strip()
-                      if f.startswith('blog-frontend/src/content/blog/') and f.endswith('.md'):
-                          target_file = f
-                          break
-              except Exception:
-                  pass
 
           title = ''
           url = ''
-          if target_file and os.path.exists(target_file):
+          if target_file and os.path.exists(target_file) and not re.search(r'^draft: true', open(target_file, encoding='utf-8').read(), re.M):
               with open(target_file, 'r', encoding='utf-8') as f:
                   content = f.read()
                   m = re.search(r'^title:\s*[\"\'\']?(.*?)[\"\'\']?\s*$', content, re.M)

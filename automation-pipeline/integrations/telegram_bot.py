@@ -92,7 +92,7 @@ class TelegramNotifier:
 
 📝 <b>핵심 다룰 내용</b>:
 {points_html}
-⚡ <i>AI 에이전트가 위 주제를 기반으로 1,500자 심층 포스팅 작성을 시작합니다.</i>"""
+⚡ <i>AI 에이전트가 위 주제를 기반으로 주제별 초안 작성을 시작합니다.</i>"""
 
         return self._send_message(msg)
 
@@ -100,70 +100,18 @@ class TelegramNotifier:
     # 1-1. Gemini 3.1 Pro 심층 감수 보고서 및 HITL 승인 요청
     # -------------------------------------------------------------
     def send_review_report(self, draft_id: str, article: Dict[str, Any], review: Dict[str, Any]) -> bool:
-        title = article.get("title", "")
-        category = article.get("category", "")
-        reading_time = article.get("readingTime", "6 min read")
-        total_score = review.get("total_score", 0)
-        verdict = review.get("verdict", "REVISE")
-        breakdown = review.get("breakdown", {})
-        
-        acc_score = breakdown.get("topic_accuracy", 0)
-        fact_score = breakdown.get("fact_check", 0)
-        seo_score = breakdown.get("seo_quality", 0)
-        pol_score = breakdown.get("policy_safety", 0)
-        
-        char_count = review.get("char_count") or len(article.get("markdown_content", "").replace(" ", "").replace("\n", ""))
-        faqs_count = len(article.get("faqs", []))
-        
-        if verdict == "PASS":
-            verdict_badge = "✅ PASS (합격 / 발행 권장)"
-        elif verdict == "REVISE":
-            verdict_badge = "⚠️ REVISE (보완 권장)"
-        else:
-            verdict_badge = "❌ FAIL (품질 미달)"
-            
-        fact_details = review.get("fact_check_details", [])
-        fact_html = "".join([f"  • {f}\n" for f in fact_details[:3]]) if fact_details else "  • 팩트체크 이상 없음\n"
-        
-        summary_for_user = review.get("summary_for_user", "")
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-        
-        msg = f"""🧐 <b>[Gemini 3.1 Pro 심층 감수 보고서]</b> ({now_str})
-━━━━━━━━━━━━━━━━━━━━
-📌 <b>초안 ID</b>: <code>{draft_id}</code>
-📝 <b>제목</b>: <b>{title}</b>
-🏷️ <b>카테고리</b>: {category} | ⏱️ {reading_time}
-📏 <b>본문 분량</b>: <code>{char_count:,}자</code> | ❓ FAQ: <code>{faqs_count}개</code>
-
-📊 <b>종합 감수 점수: <code>{total_score}/100점</code></b>
-🏆 <b>감수 판정: {verdict_badge}</b>
-
-📈 <b>세부 평가 내역 (100점 만점)</b>:
-  • 🎯 주제 정확성: <code>{acc_score}/25점</code>
-  • 🔍 팩트체크 & 오류: <code>{fact_score}/35점</code>
-  • 📐 SEO/E-E-A-T 구조: <code>{seo_score}/25점</code>
-  • 🛡️ 애드센스 안전성: <code>{pol_score}/15점</code>
-
-🔬 <b>핵심 팩트체크 결과</b>:
-{fact_html}
-💡 <b>종합 총평</b>:
-<i>{summary_for_user}</i>
-━━━━━━━━━━━━━━━━━━━━
-⚡ <b>검토 대기 큐에 안전하게 적재되었습니다.</b>
-아래 버튼을 눌러 승인하시면 즉시 배포됩니다."""
-
-        reply_markup = {
-            "inline_keyboard": [
-                [
-                    {"text": "✅ 즉시 승인 및 발행", "callback_data": f"approve:{draft_id}"},
-                    {"text": "❌ 발행 보류", "callback_data": f"reject:{draft_id}"}
-                ],
-                [
-                    {"text": "📖 본문 초안 보기", "callback_data": f"view_draft:{draft_id}"}
-                ]
-            ]
-        }
-        return self._send_message(msg, reply_markup)
+        from html import escape
+        title = escape(str(article.get("title", "")))
+        summary = escape(str(review.get("summary_for_user", "검토 의견 없음")))
+        state = escape(str(review.get("review_status", "legacy_report_unverified")))
+        msg = (f"📝 <b>초안 검토 대기</b>\n제목: {title}\nID: <code>{escape(draft_id)}</code>\n"
+               f"검토 상태: {state}\n\n{summary}\n\n"
+               "AI 점수나 글 형식은 사실 확인 또는 애드센스 승인 증거가 아닙니다. "
+               "본문 전문, 제목과 FAQ의 일치, 공식 출처와 기준일을 확인한 뒤 승인하세요.")
+        return self._send_message(msg, {"inline_keyboard": [
+            [{"text": "📖 본문 초안 보기", "callback_data": f"view_draft:{draft_id}"}],
+            [{"text": "✅ 검토 후 승인", "callback_data": f"approve:{draft_id}"},
+             {"text": "❌ 발행 보류", "callback_data": f"reject:{draft_id}"}]]})
 
     # -------------------------------------------------------------
     # 2. 새로운 글 작성 및 배포 보고
@@ -178,18 +126,18 @@ class TelegramNotifier:
 
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-        msg = f"""🚀 <b>[새 글 작성 및 배포 완료]</b> ({now_str})
+        msg = f"""🚀 <b>[새 글 저장소 반영 요청 완료]</b> ({now_str})
 ━━━━━━━━━━━━━━━━━━━━
 📌 <b>제목</b>: <b>{title}</b>
 🏷️ <b>카테고리</b>: {category} | ⏱️ {reading_time}
-📊 <b>품질 점수</b>: <code>{score}/100점</code> (최적화 완료)
+📝 <b>사람이 검토 후 승인한 글</b>
 📏 <b>본문 분량</b>: <code>{char_count:,}자</code> | ❓ FAQ: <code>{faqs_count}개</code>
-🛡️ <b>애드센스 정책</b>: ✅ 위반 리스크 없음
+정책 적합성과 사실 정확성은 이 알림으로 보증하지 않습니다.
 
 🔗 <b>글 바로가기</b>:
 <a href="{post_url}">{post_url}</a>
 
-✨ <i>GitHub Pages에 배포 완료되었으며, 구글 검색엔진에 색인 요청(Ping)되었습니다.</i>"""
+✨ <i>저장소 반영 요청이 완료되었습니다. Pages 배포 결과와 공개 URL은 별도로 확인하세요.</i>"""
 
         reply_markup = {
             "inline_keyboard": [

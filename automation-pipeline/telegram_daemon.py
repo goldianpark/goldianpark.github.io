@@ -15,8 +15,12 @@ from integrations.telegram_bot import _load_env_file, TelegramNotifier
 from integrations.antigravity_runner import AntigravityRunner
 from agents.performance_tracker import PerformanceTracker
 from modules.draft_queue import DraftApprovalQueue
+from agents.editorial_reviewer import EditorialReviewAgent
+from templates.prompt_templates import EDITORIAL_RULES
 from main_pipeline import load_config, publish_queued_draft, KeywordHarvester, ContentWriter, PolicyInspector, GitHubPublisher, GoogleIndexing
 import asyncio
+from functools import wraps
+from modules.approval_binding import issue_approval, consume_approval, invalidate_approvals
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,6 +36,30 @@ sessions = {}
 
 raw_content_dir = config.get("github", {}).get("blog_content_dir", "../blog-frontend/src/content/blog")
 CONTENT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), raw_content_dir))
+
+def configured_chat_id():
+    value = config.get("telegram", {}).get("chat_id") or os.getenv("TELEGRAM_CHAT_ID")
+    if isinstance(value, bool) or not re.fullmatch(r"-?\d+", str(value or "").strip()):
+        return None
+    return int(str(value).strip())
+
+
+def require_allowed_chat(handler):
+    """One fail-closed boundary for every command/message/callback handler."""
+    @wraps(handler)
+    async def guarded(update, context):
+        allowed = configured_chat_id()
+        actual = getattr(getattr(update, "effective_chat", None), "id", None)
+        if allowed is None or actual != allowed:
+            logger.warning("Rejected Telegram update outside the configured chat.")
+            return
+        current = sessions.get(actual, {})
+        readonly = {"handle_help_command", "handle_status_command", "handle_queue_command", "handle_review_command", "handle_traffic_command", "start"}
+        if current.get("publication_inflight") and handler.__name__ not in readonly:
+            return
+        return await handler(update, context)
+    return guarded
+
 
 def extract_json(raw_text: str) -> Any:
     clean = raw_text.strip()
@@ -93,6 +121,7 @@ def fetch_url_context(url: str) -> str:
         logger.warning(f"URL 내용 수집 실패 ({url}): {e}")
         return ""
 
+@require_allowed_chat
 async def handle_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = f"""📚 <b>[{SITE_TITLE} 블로그 에이전트 명령어 & 사용 가이드]</b>
 ━━━━━━━━━━━━━━━━━━━━
@@ -103,7 +132,7 @@ async def handle_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 • <code>/queue</code> : 발행 대기 중인 초안 큐 목록 및 감수 점수 조회
 • <code>/approve [ID]</code> : 특정 초안 승인 및 GitHub Pages 즉시 배포
 • <code>/reject [ID]</code> : 특정 초안 발행 보류(반려) 처리
-• <code>/review [ID]</code> : 특정 초안의 Gemini 3.1 Pro 심층 감수 보고서 조회
+• <code>/review [ID]</code> : 특정 초안의 AI 편집 의견과 검토 상태 조회
 • <code>/write [주제/자료]</code> : 새로운 블로그 포스팅 기획 및 작성 시작
 • <code>/edit [URL] [요청사항]</code> : 기존 블로그 포스팅 내용 또는 URL(슬러그) 수정
 • <code>/cancel</code> 또는 <code>/reset</code> : 진행 중인 기획/초안 작업 취소 및 초기화
@@ -124,6 +153,7 @@ async def handle_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await update.message.reply_text(msg, parse_mode="HTML")
 
+@require_allowed_chat
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"👋 <b>{SITE_TITLE} 인터랙티브 블로그 AI 에이전트에 오신 것을 환영합니다!</b>\n\n"
@@ -132,6 +162,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML"
     )
 
+@require_allowed_chat
 async def handle_traffic_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """오늘 실시간 클릭 및 뷰(View) 트래픽 보고서 즉시 조회 및 전송"""
     status_msg = await update.message.reply_text("⏳ <b>실시간 트래픽 및 클릭/뷰 데이터를 집계 중입니다...</b>", parse_mode="HTML")
@@ -148,6 +179,7 @@ async def handle_traffic_command(update: Update, context: ContextTypes.DEFAULT_T
         logger.error(f"트래픽 보고서 생성 실패: {e}")
         await update.message.reply_text(f"⚠️ 트래픽 보고서 생성 중 오류가 발생했습니다: {e}")
 
+@require_allowed_chat
 async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     tracker = PerformanceTracker(config)
@@ -286,12 +318,14 @@ async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TY
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(msg, parse_mode="HTML", reply_markup=reply_markup, disable_web_page_preview=True)
 
+@require_allowed_chat
 async def handle_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if chat_id in sessions:
         del sessions[chat_id]
         await update.message.reply_text("🔄 현재 작업 세션이 취소 및 초기화되었습니다. 새로운 주제를 언제든 입력해주세요!")
 
+@require_allowed_chat
 async def handle_queue_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     queue = DraftApprovalQueue()
     pending = queue.list_pending()
@@ -324,6 +358,7 @@ async def handle_queue_command(update: Update, context: ContextTypes.DEFAULT_TYP
     reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
     await update.message.reply_text("\n".join(msg_lines), parse_mode="HTML", reply_markup=reply_markup)
 
+@require_allowed_chat
 async def handle_approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     queue = DraftApprovalQueue()
@@ -354,19 +389,20 @@ async def handle_approve_command(update: Update, context: ContextTypes.DEFAULT_T
         parse_mode="HTML"
     )
     
-    success, res = publish_queued_draft(config, draft["draft_id"])
+    success, res = publish_queued_draft(config, draft["draft_id"], human_approved=True)
     if success:
         await status_msg.edit_text(
-            f"🎉 <b>[포스팅 승인 및 배포 완료]</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+            f"🎉 <b>[포스팅 승인 및 저장소 반영 요청 완료]</b>\n━━━━━━━━━━━━━━━━━━━━\n"
             f"📌 <b>제목</b>: <b>{draft.get('title')}</b>\n"
             f"🔗 <b>글 바로가기</b>: <a href=\"{res}\">{res}</a>\n\n"
-            f"✨ <i>GitHub Pages에 성공적으로 배포 및 색인 요청되었습니다.</i>",
+            f"✨ <i>저장소 반영 요청이 완료되었습니다. Pages 배포 결과와 실제 URL을 확인하세요.</i>",
             parse_mode="HTML",
             disable_web_page_preview=False
         )
     else:
         await status_msg.edit_text(f"❌ 배포 실패: {res}")
 
+@require_allowed_chat
 async def handle_reject_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     queue = DraftApprovalQueue()
@@ -380,6 +416,7 @@ async def handle_reject_command(update: Update, context: ContextTypes.DEFAULT_TY
     else:
         await update.message.reply_text(f"⚠️ 초안(<code>{draft_id}</code>)을 찾을 수 없습니다.", parse_mode="HTML")
 
+@require_allowed_chat
 async def handle_review_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     queue = DraftApprovalQueue()
@@ -396,6 +433,7 @@ async def handle_review_command(update: Update, context: ContextTypes.DEFAULT_TY
     notifier.send_review_report(draft["draft_id"], draft.get("article", {}), draft.get("review", {}))
     await update.message.reply_text(f"🧐 초안(<code>{draft_id}</code>)의 감수 보고서를 전송했습니다.", parse_mode="HTML")
 
+@require_allowed_chat
 async def handle_write_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = " ".join(context.args) if context.args else ""
     if not user_text:
@@ -406,6 +444,7 @@ async def handle_write_command(update: Update, context: ContextTypes.DEFAULT_TYP
     sessions[chat_id] = {"state": "PLANNING", "feedbacks": [user_text]}
     await generate_or_update_topic_plan(update.message, chat_id, user_text, context, is_update=False)
 
+@require_allowed_chat
 async def handle_edit_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = " ".join(context.args) if context.args else ""
     if not user_text:
@@ -413,6 +452,7 @@ async def handle_edit_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     await route_message(update.message, user_text, context)
 
+@require_allowed_chat
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     await route_message(update.message, user_text, context)
@@ -420,6 +460,10 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def route_message(message, user_text, context):
     chat_id = message.chat_id
     session = sessions.get(chat_id)
+    if session and session.get("busy"):
+        return
+    if session:
+        invalidate_approvals(session)
 
     # 1. Existing Blog Edit Request
     blog_url_match = re.search(r"(?:https?://[^/\s]+/)?blog/([^/\s?#]+)", user_text)
@@ -454,6 +498,8 @@ async def route_message(message, user_text, context):
 # STEP 1: TOPIC PLANNING & ITERATIVE REFINEMENT
 # -------------------------------------------------------------
 async def generate_or_update_topic_plan(message, chat_id, user_input, context, is_update=False):
+    if chat_id in sessions:
+        invalidate_approvals(sessions[chat_id])
     loading_text = "🔄 추가 첨언 및 자료를 반영하여 기획안을 보강 중입니다..." if is_update else "⏳ 입력하신 자료를 분석하여 포스팅 기획안을 작성 중입니다. (Antigravity CLI 가동 중...)"
     processing_msg = await message.reply_text(loading_text)
 
@@ -468,7 +514,8 @@ async def generate_or_update_topic_plan(message, chat_id, user_input, context, i
 
     try:
         runner = AntigravityRunner(config)
-        system_prompt = "당신은 수익화 및 SEO 전문 블로그 기획 에이전트입니다. 오직 유효한 JSON 형식으로만 응답해야 합니다."
+        category_names = ", ".join(c.get("name", "") for c in config.get("content", {}).get("categories", []))
+        system_prompt = f"주제별 독자 질문에 답하는 블로그 기획 보조입니다. 등록 카테고리: {category_names}. 기획 JSON 형식만 반환하세요."
 
         # URL 링크가 포함된 경우 웹페이지 본문 및 목차 자동 수집
         url_match = re.search(r"https?://[^\s]+", user_input)
@@ -508,15 +555,15 @@ async def generate_or_update_topic_plan(message, chat_id, user_input, context, i
    반드시 각 글의 기획안을 포함하는 **JSON 리스트** 형식으로 응답하세요:
    [
      {{
-       "title": "클릭률과 검색 유입을 극대화하는 매력적인 제목 1",
-       "category": "AI & 생산성",
+       "title": "구체적인 독자 질문에 답하는 제목 1",
+       "category": "등록 카테고리 중 주제에 맞는 값",
        "target_keyword": "핵심 키워드",
        "tags": ["태그1", "태그2", "태그3"],
        "key_points": ["다룰 핵심 내용1", "핵심 내용2", "핵심 내용3"]
      }},
      {{
        "title": "매력적인 제목 2",
-       "category": "개발 & 테크",
+       "category": "등록 카테고리 중 주제에 맞는 값",
        "target_keyword": "핵심 키워드",
        "tags": ["태그1", "태그2"],
        "key_points": ["다룰 핵심 내용1", "핵심 내용2"]
@@ -526,8 +573,8 @@ async def generate_or_update_topic_plan(message, chat_id, user_input, context, i
 2. 단일 글 작성 요청인 경우:
    단일 JSON 객체 형식으로 응답하세요:
    {{
-     "title": "클릭률과 검색 유입을 극대화하는 매력적인 제목",
-     "category": "AI & 생산성",
+     "title": "구체적인 독자 질문에 답하는 제목",
+     "category": "등록 카테고리 중 주제에 맞는 값",
      "target_keyword": "핵심 롱테일 키워드",
      "tags": ["태그1", "태그2", "태그3", "태그4"],
      "key_points": ["핵심 포인트1", "포인트2", "포인트3"]
@@ -535,7 +582,7 @@ async def generate_or_update_topic_plan(message, chat_id, user_input, context, i
 
 반드시 마크다운 코드블록(```json) 없이 순수한 JSON으로만 응답하세요.
 """
-        raw_output = runner.generate_text(system_prompt=system_prompt, user_prompt=user_prompt)
+        raw_output = runner.generate_text(system_prompt=system_prompt + "\n" + EDITORIAL_RULES, user_prompt=user_prompt)
         if not raw_output:
             raise Exception("Antigravity 파이프라인에서 응답을 생성하지 못했습니다.")
 
@@ -597,7 +644,7 @@ async def generate_or_update_topic_plan(message, chat_id, user_input, context, i
         keyboard = [
             [
                 InlineKeyboardButton("✍️ 본문 초안 작성 (검토)", callback_data="btn_create_draft"),
-                InlineKeyboardButton("🚀 즉시 발행 & 배포", callback_data="btn_quick_publish")
+                InlineKeyboardButton("✍️ 초안 작성 후 검토", callback_data="btn_quick_publish")
             ],
             [InlineKeyboardButton("❌ 취소 및 초기화", callback_data="btn_cancel_session")]
         ]
@@ -620,17 +667,19 @@ async def create_article_draft(chat_id, message_id, context):
         await context.bot.send_message(chat_id=chat_id, text="⚠️ 기획안 세션이 없습니다. 새 주제를 입력해주세요.")
         return
 
+    invalidate_approvals(session)
+    session["busy"] = True
     topic_data = session["topic"]
     feedbacks = session.get("feedbacks", [])
 
     status_msg = await context.bot.send_message(
         chat_id=chat_id,
-        text="✍️ <b>Antigravity 에이전트가 1,500자 이상 심층 아티클 초안을 작성 중입니다... (약 1~2분 소요)</b>",
+        text="✍️ <b>Antigravity 에이전트가 주제별 아티클 초안을 작성 중입니다... (약 1~2분 소요)</b>",
         parse_mode="HTML"
     )
 
     session["busy"] = True
-    session["action"] = "본문 1,500자 이상 심층 초안 작성 (Antigravity CLI)"
+    session["action"] = "주제별 본문 초안 작성 (Antigravity CLI)"
     session["started_at"] = time.time()
     sessions[chat_id] = session
 
@@ -646,6 +695,7 @@ async def create_article_draft(chat_id, message_id, context):
 
         article = writer.write_article(enhanced_topic)
         session["draft"] = article
+        approval_token = issue_approval(session, "draft")
         session["state"] = "DRAFTED"
         sessions[chat_id] = session
 
@@ -663,7 +713,7 @@ async def create_article_draft(chat_id, message_id, context):
             f"📄 <b>[본문 초안 작성 완료]</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"📌 <b>제목</b>: <b>{article.get('title')}</b>\n"
-            f"📊 <b>품질 점수</b>: <code>{score}/100점</code> | 📏 <b>분량</b>: <code>{char_count:,}자</code>\n"
+            f"📊 <b>형식 점검 참고값</b>: <code>{score}/100점</code> | 📏 <b>분량</b>: <code>{char_count:,}자</code>\n"
             f"⏱️ <b>소요 시간</b>: {article.get('readingTime', '6 min read')} | ❓ <b>FAQ</b>: {faqs_count}개\n\n"
             f"📖 <b>서론 미리보기</b>:\n"
             f"<i>\"{content_preview}...\"</i>\n\n"
@@ -674,7 +724,7 @@ async def create_article_draft(chat_id, message_id, context):
         )
 
         keyboard = [
-            [InlineKeyboardButton("🚀 최종 발행 및 배포", callback_data="btn_publish_draft")],
+            [InlineKeyboardButton("🚀 최종 발행 및 배포", callback_data=f"btn_publish_draft:{approval_token}")],
             [
                 InlineKeyboardButton("✏️ 추가 수정 (피드백)", callback_data="btn_request_more_draft_edit"),
                 InlineKeyboardButton("📖 초안 전문 보기", callback_data="btn_view_full_draft")
@@ -697,6 +747,8 @@ async def refine_article_draft(message, chat_id, user_feedback, context):
         await message.reply_text("⚠️ 검토 중인 초안이 없습니다. 새 주제를 입력해주세요.")
         return
 
+    invalidate_approvals(session)
+    session["busy"] = True
     processing_msg = await message.reply_text("🔄 보내주신 피드백/자료를 반영하여 본문 초안을 수정 및 보강 중입니다...")
 
     current_draft = session["draft"]
@@ -707,7 +759,7 @@ async def refine_article_draft(message, chat_id, user_feedback, context):
 
     try:
         runner = AntigravityRunner(config)
-        system_prompt = "당신은 전문 수석 테크 에디터입니다. 기존 초안에 사용자의 수정 요청 및 추가 자료를 완벽히 반영하여 업그레이드하고, 반드시 유효한 JSON 형식으로만 응답하세요."
+        system_prompt = "당신은 해당 블로그 주제에 맞는 편집 보조입니다. 기존 초안에 사용자의 수정 요청 및 추가 자료를 완벽히 반영하여 업그레이드하고, 반드시 유효한 JSON 형식으로만 응답하세요."
 
         user_prompt = f"""
 [현재 작성된 초안 데이터]
@@ -742,12 +794,13 @@ async def refine_article_draft(message, chat_id, user_feedback, context):
   "markdown_content": "수정된 본문 전체 내용 (마크다운 H2, H3, 표, 리스트 포함)"
 }}
 """
-        raw_output = runner.generate_text(system_prompt=system_prompt, user_prompt=user_prompt)
+        raw_output = runner.generate_text(system_prompt=system_prompt + "\n" + EDITORIAL_RULES, user_prompt=user_prompt)
         if not raw_output:
             raise Exception("Antigravity 에디터로부터 응답을 받지 못했습니다.")
 
         updated_draft = extract_json(raw_output)
         session["draft"] = updated_draft
+        approval_token = issue_approval(session, "draft")
         sessions[chat_id] = session
 
         inspector = PolicyInspector(config)
@@ -764,7 +817,7 @@ async def refine_article_draft(message, chat_id, user_feedback, context):
         )
 
         keyboard = [
-            [InlineKeyboardButton("🚀 최종 발행 및 배포", callback_data="btn_publish_draft")],
+            [InlineKeyboardButton("🚀 최종 발행 및 배포", callback_data=f"btn_publish_draft:{approval_token}")],
             [
                 InlineKeyboardButton("✏️ 추가 수정 (피드백)", callback_data="btn_request_more_draft_edit"),
                 InlineKeyboardButton("📖 수정된 전문 보기", callback_data="btn_view_full_draft")
@@ -784,15 +837,24 @@ async def refine_article_draft(message, chat_id, user_feedback, context):
 # -------------------------------------------------------------
 # STEP 3: PUBLISHING TO GITHUB PAGES
 # -------------------------------------------------------------
-async def execute_publish(chat_id, context, is_draft=True):
+async def execute_publish(chat_id, context, is_draft=True, approval=None):
     session = sessions.get(chat_id)
     if not session:
         await context.bot.send_message(chat_id=chat_id, text="⚠️ 발행할 작업 세션을 찾을 수 없습니다.")
         return
 
+    # An approval of a plan is not approval of a not-yet-written article.
+    if not is_draft or not session.get("draft"):
+        await create_article_draft(chat_id, None, context)
+        return
+
+    if not approval or approval.get("session") is not session:
+        await context.bot.send_message(chat_id=chat_id, text="초안 버전이 바뀌었습니다. 최신 본문에 표시된 승인 버튼을 사용하세요.")
+        return
+
     status_msg = await context.bot.send_message(
         chat_id=chat_id,
-        text="🚀 <b>Astro 블로그 저장소에 마크다운을 커밋하고 GitHub Pages로 배포 중입니다...</b>",
+        text="🚀 <b>승인한 초안 버전을 저장소에 반영하는 중입니다...</b>",
         parse_mode="HTML"
     )
 
@@ -803,15 +865,10 @@ async def execute_publish(chat_id, context, is_draft=True):
         telegram = TelegramNotifier(config)
         indexer = GoogleIndexing(config)
 
-        if is_draft and session.get("draft"):
-            article = session["draft"]
-        else:
-            # Quick publish without draft review
-            topic = session.get("topic")
-            article = writer.write_article(topic)
+        article = approval["article"]
 
         inspection = inspector.inspect_article(article)
-        saved_path = publisher.publish_article(article)
+        saved_path = publisher.publish_article(article, human_approved=True)
         
         site_url = SITE_URL
         post_slug = os.path.splitext(os.path.basename(saved_path))[0]
@@ -821,18 +878,19 @@ async def execute_publish(chat_id, context, is_draft=True):
         telegram.send_article_published(article, inspection, full_post_url)
 
         # Clear session
-        del sessions[chat_id]
+        if sessions.get(chat_id) is session:
+            del sessions[chat_id]
 
-        msg = f"""🎉 <b>[성공적으로 게시 및 배포 완료!]</b>
+        msg = f"""🎉 <b>[저장소 반영 요청 완료]</b>
 ━━━━━━━━━━━━━━━━━━━━
 📌 <b>제목</b>: <b>{article.get('title')}</b>
 🏷️ <b>카테고리</b>: {article.get('category')}
-📊 <b>품질 점수</b>: {inspection.get('score', 90)}점 ({inspection.get('char_count', 1500):,}자)
+📊 <b>형식 점검 참고값</b>: {inspection.get('score', 90)}점 ({inspection.get('char_count', 1500):,}자)
 
 🔗 <b>글 바로가기</b>:
 <a href="{full_post_url}">{full_post_url}</a>
 
-✨ <i>GitHub Pages에 안전하게 배포되었으며 구글 검색엔진에 색인 요청되었습니다.</i>"""
+✨ <i>저장소 커밋/Push 요청이 완료되었습니다. Pages 배포 결과와 공개 URL 반영은 별도로 확인하세요.</i>"""
 
         reply_markup = {
             "inline_keyboard": [
@@ -844,98 +902,40 @@ async def execute_publish(chat_id, context, is_draft=True):
     except Exception as e:
         logger.error(f"Error in execute_publish: {e}")
         await status_msg.edit_text(f"❌ 배포 중 오류가 발생했습니다: {e}")
+    finally:
+        session["busy"] = False
+        session.pop("publication_inflight", None)
 
 async def execute_batch_publish(chat_id, context):
     session = sessions.get(chat_id)
     if not session or not session.get("topics"):
-        await context.bot.send_message(chat_id=chat_id, text="⚠️ 발행할 다중 포스팅 작업 세션을 찾을 수 없습니다.")
+        await context.bot.send_message(chat_id=chat_id, text="검토할 기획안이 없습니다.")
         return
-
-    topics = session["topics"]
-    total = len(topics)
-
-    status_msg = await context.bot.send_message(
-        chat_id=chat_id,
-        text=f"🚀 <b>[다중 글 일괄 발행 시작 (총 {total}편)]</b>\n"
-             f"Antigravity 에이전트가 각 챕터별 심층 글을 순차적으로 작성 및 배포합니다...",
-        parse_mode="HTML"
-    )
-
     session["busy"] = True
-    session["action"] = f"다중 글({total}편) 순차 생성 및 배포"
-    session["started_at"] = time.time()
-    sessions[chat_id] = session
-
+    completed = []
     try:
         writer = ContentWriter(config)
-        publisher = GitHubPublisher(config)
-        inspector = PolicyInspector(config)
+        reviewer = EditorialReviewAgent(config)
+        queue = DraftApprovalQueue()
         telegram = TelegramNotifier(config)
-        indexer = GoogleIndexing(config)
-        site_url = SITE_URL
-
-        published_results = []
-
-        for idx, topic in enumerate(topics):
-            current_num = idx + 1
-            await status_msg.edit_text(
-                f"✍️ <b>[{current_num}/{total}편 심층 본문 작성 중...]</b>\n"
-                f"📌 <b>{topic.get('title')}</b>\n"
-                f"⏳ 약 1~2분 소요됩니다... (진행률: {int((idx/total)*100)}%)",
-                parse_mode="HTML"
-            )
-
-            # Write article
+        for topic in session["topics"]:
             article = writer.write_article(topic)
-            inspection = inspector.inspect_article(article)
-            saved_path = publisher.publish_article(article)
-
-            post_slug = os.path.splitext(os.path.basename(saved_path))[0]
-            full_post_url = f"{site_url.rstrip('/')}/blog/{post_slug}/"
-            published_results.append({
-                "title": article.get("title"),
-                "url": full_post_url,
-                "score": inspection.get("score", 90),
-                "char_count": inspection.get("char_count", 1500)
-            })
-
-            # Send Telegram alert for each article
-            telegram.send_article_published(article, inspection, full_post_url)
-
-        # Ping search console sitemap
-        indexer.ping_sitemap()
-
-        # Clear session
-        if chat_id in sessions:
-            del sessions[chat_id]
-
-        summary_lines = "\n".join([
-            f"{i+1}. <a href='{r['url']}'>{r['title']}</a> ({r['char_count']:,}자)"
-            for i, r in enumerate(published_results)
-        ])
-
-        final_msg = f"""🎉 <b>[총 {total}편 일괄 포스팅 & 배포 완료!]</b>
-━━━━━━━━━━━━━━━━━━━━
-요청하신 모든 챕터별 아티클이 고품질로 성공적으로 작성되어 GitHub Pages에 배포되었습니다.
-
-📚 <b>발행된 포스팅 목록:</b>
-{summary_lines}
-
-✨ 검색 엔진 색인 요청(핑)이 전송되었으며, 블로그 메인 화면 및 갤러리에서 즉시 확인하실 수 있습니다."""
-
-        await status_msg.edit_text(final_msg, parse_mode="HTML", disable_web_page_preview=True)
-
-    except Exception as e:
-        logger.error(f"Error in execute_batch_publish: {e}")
-        await status_msg.edit_text(f"❌ 다중 포스팅 처리 중 오류가 발생했습니다: {e}")
+            review = reviewer.review_article(article, topic)
+            draft_id = queue.add_draft(article, review, topic=topic)
+            completed.append(draft_id)
+            telegram.send_review_report(draft_id, article, review)
+        await context.bot.send_message(chat_id=chat_id, text=f"{len(completed)}편을 검토 큐에 저장했습니다. 각 초안의 본문과 출처를 확인한 뒤 승인하세요.")
+    except Exception as exc:
+        await context.bot.send_message(chat_id=chat_id, text=f"초안 생성 중단. 저장된 초안 {len(completed)}편은 검토 큐에 남아 있습니다: {exc}")
     finally:
-        if chat_id in sessions:
-            sessions[chat_id]["busy"] = False
+        session["busy"] = False
 
 # -------------------------------------------------------------
 # STEP 4: EXISTING BLOG POST EDITING
 # -------------------------------------------------------------
 async def process_edit_input(message, user_text, blog_url_match, context, is_update=False):
+    if message.chat_id in sessions:
+        invalidate_approvals(sessions[message.chat_id])
     loading_text = "🔄 추가 수정 요청사항을 반영 중입니다..." if is_update else "🔍 수정할 블로그 포스팅을 조회하고 수정안을 기획 중입니다. (Antigravity CLI 가동 중...)"
     processing_msg = await message.reply_text(loading_text)
     
@@ -1024,13 +1024,14 @@ async def process_edit_input(message, user_text, blog_url_match, context, is_upd
   "markdown_content": "수정된 본문 전체 내용 (마크다운 H2, H3, 표, 리스트 포함)"
 }}
 """
-        raw_output = runner.generate_text(system_prompt=system_prompt, user_prompt=user_prompt)
+        raw_output = runner.generate_text(system_prompt=system_prompt + "\n" + EDITORIAL_RULES, user_prompt=user_prompt)
         if not raw_output:
             raise Exception("Antigravity 에디터로부터 응답을 받지 못했습니다.")
 
         modified_data = extract_json(raw_output)
         session["slug"] = slug
         session["data"] = modified_data
+        approval_token = issue_approval(session, "data")
         session["filepath"] = filepath
         session["state"] = "EDITING"
         sessions[chat_id] = session
@@ -1059,7 +1060,7 @@ async def process_edit_input(message, user_text, blog_url_match, context, is_upd
         )
 
         keyboard = [
-            [InlineKeyboardButton("🚀 최종 수정 및 재배포", callback_data="btn_apply_edit")],
+            [InlineKeyboardButton("🚀 최종 수정 및 재배포", callback_data=f"btn_apply_edit:{approval_token}")],
             [
                 InlineKeyboardButton("✏️ 추가 수정 (피드백)", callback_data="btn_request_more_edit"),
                 InlineKeyboardButton("📖 수정본 전문 보기", callback_data="btn_view_full_edit")
@@ -1076,10 +1077,14 @@ async def process_edit_input(message, user_text, blog_url_match, context, is_upd
         if chat_id in sessions:
             sessions[chat_id]["busy"] = False
 
-async def execute_edit_publish(chat_id, context):
+async def execute_edit_publish(chat_id, context, approval=None):
     session = sessions.get(chat_id)
     if not session or not session.get("data"):
         await context.bot.send_message(chat_id=chat_id, text="⚠️ 수정할 작업 세션이 없습니다.")
+        return
+
+    if not approval or approval.get("session") is not session:
+        await context.bot.send_message(chat_id=chat_id, text="수정안 버전이 바뀌었습니다. 최신 수정안의 승인 버튼을 사용하세요.")
         return
 
     status_msg = await context.bot.send_message(
@@ -1089,30 +1094,31 @@ async def execute_edit_publish(chat_id, context):
     )
 
     try:
-        slug = session["slug"]
-        article_data = session["data"]
+        slug = approval["slug"]
+        article_data = approval["article"]
         new_slug = article_data.get("new_slug")
         publisher = GitHubPublisher(config)
         indexer = GoogleIndexing(config)
         
-        saved_path, final_slug = publisher.update_existing_article(slug, article_data, new_slug=new_slug)
+        saved_path, final_slug = publisher.update_existing_article(slug, article_data, new_slug=new_slug, human_approved=True)
         site_url = SITE_URL
         full_post_url = f"{site_url.rstrip('/')}/blog/{final_slug}/"
         
         indexer.ping_sitemap()
         
-        del sessions[chat_id]
+        if sessions.get(chat_id) is session:
+            del sessions[chat_id]
 
         slug_changed_note = f"\n🔗 <b>새 URL</b>: <a href=\"{full_post_url}\">{full_post_url}</a>\n" if final_slug != slug else ""
 
-        msg = f"""🎉 <b>[포스팅 수정 및 재배포 완료]</b>
+        msg = f"""🎉 <b>[포스팅 수정 및 저장소 반영 요청 완료]</b>
 ━━━━━━━━━━━━━━━━━━━━
 📌 <b>제목</b>: <b>{article_data.get('title')}</b>
 💡 <b>수정 사항</b>: {article_data.get('change_summary', '수정 완료')}{slug_changed_note}
 🔗 <b>글 바로가기</b>:
 <a href="{full_post_url}">{full_post_url}</a>
 
-✨ <i>GitHub Pages에 성공적으로 반영 및 재배포되었습니다!</i>"""
+✨ <i>저장소 반영 요청이 완료되었습니다. Pages 결과와 공개 URL은 별도로 확인하세요.</i>"""
 
         reply_markup = {
             "inline_keyboard": [
@@ -1124,10 +1130,14 @@ async def execute_edit_publish(chat_id, context):
     except Exception as e:
         logger.error(f"Error in execute_edit_publish: {e}")
         await status_msg.edit_text(f"❌ 수정 배포 중 오류가 발생했습니다: {e}")
+    finally:
+        session["busy"] = False
+        session.pop("publication_inflight", None)
 
 # -------------------------------------------------------------
 # BUTTON CALLBACK HANDLER
 # -------------------------------------------------------------
+@require_allowed_chat
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     try:
@@ -1147,12 +1157,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data.startswith("approve:"):
         target_id = data.split("approve:", 1)[1]
         await query.edit_message_text("🚀 <b>[초안 승인 접수]</b> GitHub Pages 배포를 시작합니다...", parse_mode="HTML")
-        success, res = publish_queued_draft(config, target_id)
+        success, res = publish_queued_draft(config, target_id, human_approved=True)
         if success:
             await query.message.reply_text(
-                f"🎉 <b>[포스팅 승인 및 배포 완료]</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+                f"🎉 <b>[포스팅 승인 및 저장소 반영 요청 완료]</b>\n━━━━━━━━━━━━━━━━━━━━\n"
                 f"🔗 <b>글 바로가기</b>: <a href=\"{res}\">{res}</a>\n\n"
-                f"✨ <i>GitHub Pages에 성공적으로 배포 및 색인 요청되었습니다.</i>",
+                f"✨ <i>저장소 반영 요청이 완료되었습니다. Pages 배포 결과와 실제 URL을 확인하세요.</i>",
                 parse_mode="HTML",
                 disable_web_page_preview=False
             )
@@ -1190,23 +1200,39 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data == "btn_quick_publish":
-        await query.edit_message_text("🚀 즉시 작성 및 배포를 시작합니다...")
+        await query.edit_message_text("🚀 초안 작성 후 검토를 시작합니다...")
         asyncio.create_task(execute_publish(chat_id, context, is_draft=False))
         return
 
     if data == "btn_batch_publish":
-        await query.edit_message_text("🚀 다중 포스팅 일괄 생성 및 순차 배포를 시작합니다...")
+        await query.edit_message_text("🚀 여러 초안을 생성하여 개별 검토 큐에 저장합니다...")
         asyncio.create_task(execute_batch_publish(chat_id, context))
         return
 
-    if data == "btn_publish_draft":
-        await query.edit_message_text("🚀 초안을 최종 승인하여 GitHub에 배포합니다...")
-        asyncio.create_task(execute_publish(chat_id, context, is_draft=True))
+    if data == "btn_publish_draft" or data.startswith("btn_publish_draft:"):
+        token = data.partition(":")[2]
+        approval = consume_approval(sessions.get(chat_id), "draft", token)
+        if approval is None:
+            await query.edit_message_text("이 승인 버튼은 만료되었거나 이미 사용됐습니다. 최신 초안을 검토하세요.")
+            return
+        try:
+            await execute_publish(chat_id, context, is_draft=True, approval=approval)
+        finally:
+            approval["session"]["busy"] = False
+            approval["session"].pop("publication_inflight", None)
         return
 
-    if data == "btn_apply_edit":
-        await query.edit_message_text("✍️ 수정 사항을 적용하여 재배포합니다...")
-        asyncio.create_task(execute_edit_publish(chat_id, context))
+    if data == "btn_apply_edit" or data.startswith("btn_apply_edit:"):
+        token = data.partition(":")[2]
+        approval = consume_approval(sessions.get(chat_id), "data", token)
+        if approval is None:
+            await query.edit_message_text("이 승인 버튼은 만료되었거나 이미 사용됐습니다. 최신 수정안을 검토하세요.")
+            return
+        try:
+            await execute_edit_publish(chat_id, context, approval=approval)
+        finally:
+            approval["session"]["busy"] = False
+            approval["session"].pop("publication_inflight", None)
         return
 
     if data == "btn_view_full_draft":
@@ -1275,6 +1301,10 @@ def main():
         logger.error("TELEGRAM_BOT_TOKEN is not set.")
         return
         
+    if configured_chat_id() is None:
+        logger.error("TELEGRAM_CHAT_ID/configured chat_id is missing or invalid; bot is disabled.")
+        return
+
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
     
     app.add_handler(CommandHandler("start", start))

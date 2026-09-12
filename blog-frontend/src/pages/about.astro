@@ -12,35 +12,29 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <div class="bg-white p-8 sm:p-12 rounded-2xl border-2 border-amber-200/80 shadow-sm prose prose-slate max-w-none">
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-4 border border-amber-300">
-        <span>✨ 실버 세대를 위한 든든한 등대</span>
+        <span>복지와 생활 정보를 확인하는 안내</span>
       </div>
       <h1 class="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight mb-6">
         About {siteConfig.site.name}
       </h1>
 
       <p class="lead text-lg sm:text-xl text-slate-700 leading-relaxed">
-        <strong>골든라이프(GoldenLife)</strong>는 60~70대 시니어 어르신들과 은퇴 세대가 복잡한 행정 제도와 건강 상식을 몰라서 소중한 권리와 혜택을 놓치지 않도록, 가장 쉽고 정확하게 정보를 전달하는 실버 전문 정보 미디어입니다.
+        골든라이프는 60~70대 독자와 가족이 복지 제도와 생활 정보를 이해하도록 돕는 블로그입니다. 신청 대상과 예외, 준비할 서류, 담당 기관에 확인할 질문을 쉬운 말로 정리합니다.
       </p>
-
-      <h2>💡 우리의 미션 (Mission)</h2>
-      <p>
-        대한민국의 수많은 복지 정책은 <strong>'신청주의'</strong>로 운영됩니다. 즉, 내가 직접 알아보고 신청하지 않으면 국가는 1원도 챙겨주지 않습니다. 골든라이프는 어르신들의 눈높이에 맞춘 큰 글씨와 3줄 핵심 요약 카드를 통해, 어려운 행정 문서를 3분 만에 이해할 수 있는 친절한 설명서로 재구성합니다.
-      </p>
-
-      <h2>🎯 주요 다루는 분야</h2>
+      <h2>다루는 내용</h2>
       <ul>
-        <li><strong>정부지원금 & 복지</strong>: 만 65세 이상 혜택 50가지, 기초연금 소득인정액 계산법, 병원비·임플란트 건강보험 감면, 통신요금 할인</li>
-        <li><strong>연금 & 절세 상식</strong>: 국민연금 조기수령 vs 연기수령 손익분기점, 주택연금 가입 요령, 건강보험 피부양자 탈락 방지, 증여·상속세 절세 비법</li>
-        <li><strong>시니어 건강 & 일상</strong>: 무릎 퇴행성 관절염 예방 운동, 치매 예방 생활 수칙, 고혈압·당뇨 식단 관리, 정부 인공관절 수술비 지원</li>
+        <li><strong>복지와 지원</strong>: 공고 읽기, 신청 순서와 비용 적용 조건</li>
+        <li><strong>연금과 생활비</strong>: 가정을 명시한 계산 예제와 개인별로 확인해야 할 조건</li>
+        <li><strong>건강과 일상</strong>: 진료 때 물어볼 질문, 생활 기록, 시설 이용 안내</li>
       </ul>
-
-      <h2>✍️ 시니어 친화 편집 원칙 (Editorial Guidelines)</h2>
+      <h2>편집 기준</h2>
+      <p>자료 정리와 초안 작성에는 AI 도구를 활용합니다. 제도 설명은 공식 상세 안내에 연결하고, 개인의 진단이나 수급 자격을 이 블로그에서 확정하지 않습니다.</p>
       <ul>
-        <li><strong>돋보기 없는 편안한 가독성</strong>: 어르신들의 시력을 배려하여 18~20px의 큰 글씨와 명확한 대비, 줄 간격을 기본 적용합니다.</li>
-        <li><strong>3줄 핵심 요약 카드</strong>: 긴 글을 모두 읽기 힘드신 분들을 위해 글 서두에 '대상, 금액, 신청법'을 3장의 카드로 요약합니다.</li>
-        <li><strong>공식 출처 기반 팩트 체크</strong>: 보건복지부, 국민연금공단, 국민건강보험공단 등 국가 공식 고시 자료만을 바탕으로 철저히 검증합니다.</li>
+        <li><strong>읽기 편한 설명</strong>: 짧은 문장과 충분한 글자 크기를 사용하고 어려운 용어를 풀어 씁니다.</li>
+        <li><strong>조건과 출처</strong>: 대상, 금액, 제외 조건을 구분하고 실제 확인 날짜와 관련 자료를 적습니다.</li>
+        <li><strong>경험과 예시</strong>: 확인하지 않은 상담 경력이나 방문 경험을 만들지 않으며, 가정에 따른 계산은 예시임을 밝힙니다.</li>
+        <li><strong>오류 수정</strong>: 변경된 정보와 정정 요청을 확인해 본문과 요약을 함께 수정합니다.</li>
       </ul>
-
       <h2>📬 독자 문의 및 정정 요청</h2>
       <p>
         제도 변경 사항에 대한 제보, 오탈자 정정 요청, 콘텐츠 제휴 등은 언제든지 <a href={`${base}/contact/`} class="text-amber-800 font-bold underline">문의 페이지</a>를 통해 남겨주시면 정성껏 검토하겠습니다.

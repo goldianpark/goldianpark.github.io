@@ -10,9 +10,8 @@ export async function getStaticPaths() {
     return import.meta.env.PROD ? !data.draft : true;
   });
 
-  const knownCategories = ['ai-productivity', 'tech-dev', 'side-income'];
   const postCategories = allPosts.map(p => getCategorySlug(p.data.category));
-  const uniqueCategorySlugs = [...new Set([...knownCategories, ...postCategories])];
+  const uniqueCategorySlugs = [...new Set(postCategories)];
 
   return uniqueCategorySlugs.map(slug => {
     const filteredPosts = allPosts

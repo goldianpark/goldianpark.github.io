@@ -67,7 +67,7 @@ class DraftApprovalQueue:
             "draft_id": draft_id,
             "title": title,
             "category": article.get("category", actual_topic.get("category", "")),
-            "existing_slug": existing_slug or article.get("existing_slug") or actual_topic.get("existing_slug") or article.get("slug"),
+            "existing_slug": existing_slug or article.get("existing_slug") or actual_topic.get("existing_slug"),
             "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
             "status": "pending_review",  # pending_review, approved, rejected, published
             "topic": actual_topic,
@@ -82,7 +82,8 @@ class DraftApprovalQueue:
         }
 
         data.append(entry)
-        self._save_data(data)
+        if not self._save_data(data):
+            raise OSError("초안 큐 저장 실패")
         print(f"📥 [DraftQueue] 신규 초안 대기 큐 등록 완료: {draft_id} (제목: {title[:25]}...)")
         return draft_id
 
