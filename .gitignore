@@ -4,6 +4,7 @@ Thumbs.db
 
 # Node / Astro
 node_modules/
+node_modules
 dist/
 .astro/
 

@@ -1,5 +1,6 @@
 ---
 title: '2026년 기초연금 수급자격 및 소득인정액 모의계산: 단독가구·부부가구 지급액 기준'
+heroImage: '/images/thumbnails/2026-09-03-basic-pension-calculation-eligibility.svg'
 description: 내가 기초연금을 받을 수 있을지 소득인정액 산정 공식, 기본재산 공제액, 금융재산 및 부부감액 기준을 알기 쉽게 모의계산해
   드립니다.
 pubDate: '2026-09-03'

@@ -1,0 +1,121 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 테마별 배경 그라디언트 -->
+    <linearGradient id="mainBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064e3b" /><stop offset="50%" stop-color="#0f766e" /><stop offset="100%" stop-color="#042f2e" />
+    </linearGradient>
+
+    <!-- 황금 텍스트/뱃지 그라디언트 -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="50%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#fef08a" />
+    </linearGradient>
+
+    <!-- 우측 아트워크 패널 그라디언트 -->
+    <linearGradient id="panelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.98" />
+    </linearGradient>
+
+    <!-- 글로우 필터 -->
+    <filter id="glowFilter" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="40" result="blur" />
+    </filter>
+
+    <!-- 카드 그림자 필터 -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- 1. 배경 메인 -->
+  <rect width="1200" height="630" fill="url(#mainBg)" />
+
+  <!-- 2. 장식용 앰비언트 라이트 (글로우 효과) -->
+  <circle cx="150" cy="120" r="280" fill="#34d399" opacity="0.12" filter="url(#glowFilter)" />
+  <circle cx="1050" cy="480" r="320" fill="#34d399" opacity="0.15" filter="url(#glowFilter)" />
+
+  <!-- 3. 외곽 프리미엄 골드 프레임 테두리 -->
+  <rect x="36" y="36" width="1128" height="558" rx="28" fill="none" stroke="#fbbf24" stroke-opacity="0.25" stroke-width="1.5" />
+  <rect x="44" y="44" width="1112" height="542" rx="22" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="1" />
+
+  <!-- 4. 좌측 상단 브랜드 헤더 -->
+  <g transform="translate(90, 85)">
+    <!-- 골든라이프 브랜드 아이콘 -->
+    <rect x="0" y="0" width="46" height="46" rx="12" fill="url(#goldGrad)" filter="url(#dropShadow)" />
+    <!-- 왕관/새싹 심볼 (골든라이프 로고 간략화) -->
+    <path d="M12 32 L15 17 L23 25 L31 17 L34 32 Z" fill="#1c1917" />
+    
+    <text x="62" y="24" font-family="'Pretendard', sans-serif" font-size="22" font-weight="900" fill="#ffffff" letter-spacing="-0.5">골든라이프</text>
+    <text x="168" y="24" font-family="'Pretendard', sans-serif" font-size="15" font-weight="700" fill="#fbbf24" letter-spacing="-0.2">GoldenLife</text>
+    <text x="62" y="42" font-family="'Pretendard', sans-serif" font-size="13" font-weight="500" fill="#94a3b8">6070 시니어 복지·연금·건강 백과</text>
+  </g>
+
+  <!-- 5. 카테고리 태그 & 2026 개정판 뱃지 -->
+  <g transform="translate(90, 160)">
+    <!-- 카테고리 뱃지 -->
+    <rect x="0" y="0" width="196" height="38" rx="19" fill="#064e3b" stroke="#10b981" stroke-width="2" />
+    <text x="18" y="24" font-family="'Pretendard', sans-serif" font-size="15" font-weight="800" fill="#a7f3d0">정부지원금 &amp; 복지</text>
+
+    <!-- 테마 신뢰 뱃지 -->
+    <g transform="translate(208, 0)">
+      <rect x="0" y="0" width="165" height="38" rx="19" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5" />
+      <text x="16" y="24" font-family="'Pretendard', sans-serif" font-size="14" font-weight="800" fill="#fde68a">★ 2026 복지 지원금</text>
+    </g>
+  </g>
+
+  <!-- 6. 메인 타이틀 (좌측 영역, 3줄까지 깔끔하게 렌더링) -->
+  <text x="90" y="260" font-family="'Pretendard', sans-serif" font-size="46" font-weight="900" fill="#ffffff" letter-spacing="-1.5" filter="url(#dropShadow)">
+    <tspan x="90" dy="0">독거 어르신 응급안전안심서비스</tspan><tspan x="90" dy="58">무료 설치 대상과 IoT 비상벨</tspan><tspan x="90" dy="58">신청 총정리</tspan>
+  </text>
+
+  <!-- 7. 핵심 요약 서브카피 박스 -->
+  <g transform="translate(90, 465)">
+    <rect x="0" y="0" width="580" height="54" rx="14" fill="#0f172a" fill-opacity="0.8" stroke="#ffffff" stroke-opacity="0.12" stroke-width="1" />
+    <!-- 좌측 골드 포인트 바 -->
+    <rect x="0" y="0" width="6" height="54" rx="3" fill="url(#goldGrad)" />
+    <text x="24" y="33" font-family="'Pretendard', sans-serif" font-size="17" font-weight="500" fill="#e2e8f0">혼자 계신 부모님의 안전이 걱정되시나요? 2026년 최신 기준 독거 어르신 응급안전안심서비스 무료 설치 자격, 최신 ...</text>
+  </g>
+
+  <!-- 8. 하단 푸터 인포 -->
+  <g transform="translate(90, 555)">
+    <circle cx="6" cy="-5" r="4" fill="#10b981" />
+    <text x="18" y="0" font-family="'Pretendard', sans-serif" font-size="15" font-weight="700" fill="#fde68a">공식 정보 검증 완료</text>
+    <text x="170" y="0" font-family="'Pretendard', sans-serif" font-size="14" font-weight="400" fill="#94a3b8">• goldianpark.github.io</text>
+  </g>
+
+  <!-- 9. 우측 전용 맞춤형 테마 일러스트레이션 아트워크 -->
+  
+        <!-- 치매 국가책임제 & GPS 배회감지기 일러스트 -->
+        <g transform="translate(940, 315)">
+            <circle cx="0" cy="0" r="190" fill="#047857" opacity="0.25" filter="url(#glowFilter)"/>
+            <circle cx="0" cy="0" r="175" fill="#0f172a" stroke="#10b981" stroke-width="3" stroke-dasharray="6,4" opacity="0.8"/>
+            <circle cx="0" cy="0" r="150" fill="url(#panelGrad)" stroke="#059669" stroke-width="2"/>
+
+            <!-- 뇌(Brain) 기억력 뉴런 윤곽선 -->
+            <path d="M-60 -40 C-80 -20 -80 30 -50 60 C-30 80 30 80 50 60 C80 30 80 -20 60 -40 C40 -70 -40 -70 -60 -40 Z" fill="#1e293b" stroke="#a7f3d0" stroke-width="3"/>
+            <!-- 뇌 주름 라인 -->
+            <path d="M-40 -20 C-20 -40 20 -40 40 -20" fill="none" stroke="#34d399" stroke-width="2.5"/>
+            <path d="M-50 10 C-30 0 30 0 50 10" fill="none" stroke="#34d399" stroke-width="2.5"/>
+            <path d="M-30 40 C-10 30 10 30 30 40" fill="none" stroke="#34d399" stroke-width="2.5"/>
+
+            <!-- 스마트 GPS 안심 배회감지기 시계 -->
+            <g transform="translate(75, 45)">
+                <!-- 시계 밴드 -->
+                <rect x="-10" y="-45" width="20" height="90" rx="4" fill="#334155"/>
+                <!-- 시계 본체 -->
+                <rect x="-24" y="-24" width="48" height="48" rx="12" fill="#0f172a" stroke="#fbbf24" stroke-width="3"/>
+                <!-- GPS 신호 링 -->
+                <circle cx="0" cy="0" r="10" fill="none" stroke="#34d399" stroke-width="2"/>
+                <circle cx="0" cy="0" r="4" fill="#ef4444"/>
+            </g>
+
+            <!-- 치매안심센터 무료검진 뱃지 -->
+            <g transform="translate(-70, -75)">
+                <rect x="-30" y="-15" width="115" height="30" rx="15" fill="#064e3b" stroke="#34d399" stroke-width="2"/>
+                <text x="27" y="5" font-family="'Pretendard', sans-serif" font-size="12" font-weight="900" fill="#a7f3d0" text-anchor="middle">치매안심센터 무료</text>
+            </g>
+        </g>
+        
+</svg>

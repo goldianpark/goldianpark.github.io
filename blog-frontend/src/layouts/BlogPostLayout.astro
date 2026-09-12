@@ -18,6 +18,7 @@ export interface Props {
     tags?: string[];
     author?: string;
     readingTime?: string;
+    heroImage?: string;
     faqs?: Array<{ question: string; answer: string }>;
     summaryCards?: Array<{ badge: string; title: string; desc: string; icon?: string }>;
   };
@@ -36,6 +37,7 @@ const {
   tags = [],
   author = siteConfig.site.author || '골든라이프 편집팀',
   readingTime = '5 min read',
+  heroImage,
   faqs = [],
   summaryCards,
 } = frontmatter;
@@ -53,6 +55,7 @@ const formattedDate = new Intl.DateTimeFormat('ko-KR', {
 <BaseLayout
   title={title}
   description={description}
+  image={heroImage}
   article={true}
   pubDate={pubDate}
   updatedDate={updatedDate}
@@ -139,6 +142,20 @@ const formattedDate = new Intl.DateTimeFormat('ko-KR', {
         </div>
       </div>
     </header>
+
+    <!-- 🖼️ 대표 썸네일 이미지 (Article Featured Hero Image) -->
+    {heroImage && heroImage !== '/images/default-hero.svg' && (
+      <div class="mb-8 rounded-2xl overflow-hidden border-2 border-amber-200/90 shadow-md aspect-[1200/630] bg-slate-950">
+        <img
+          src={heroImage.startsWith('/') ? `${base}${heroImage}` : heroImage}
+          alt={title}
+          class="w-full h-full object-cover"
+          width="1200"
+          height="630"
+          loading="eager"
+        />
+      </div>
+    )}
 
     <!-- 💡 글 내용 요약 3장 카드 (3-Key Takeaway Summary Cards) -->
     <SummaryCards cards={summaryCards} faqs={faqs} description={description} />

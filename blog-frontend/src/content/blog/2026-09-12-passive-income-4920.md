@@ -1,5 +1,6 @@
 ---
 title: 국민연금 조기수령 신청 전 확인할 나이·소득 조건과 상담 질문
+heroImage: '/images/thumbnails/2026-09-12-passive-income-4920.svg'
 description: 조기노령연금 신청 전 출생연도별 수령 나이와 소득 기준을 확인하고, 재취업과 건강보험 변화를 상담할 때 준비할 자료를 정리했습니다.
 pubDate: '2026-09-12'
 category: 연금 & 절세 상식
