@@ -1,5 +1,6 @@
 ---
 title: '6070 무릎 관절염 예방 및 통증 완화 운동법: 국가 인공관절 수술비 지원 조건'
+heroImage: '/images/thumbnails/2026-09-03-senior-knee-joint-health-tips.svg'
 description: 나이 들수록 시큰거리고 붓는 퇴행성 무릎 관절염의 연골 보존 습관, 집에서 5분 만에 하는 허벅지 근육 강화 운동과 보건소
   수술비 지원 혜택을 정리해 드립니다.
 pubDate: '2026-09-03'

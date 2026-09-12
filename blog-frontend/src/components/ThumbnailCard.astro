@@ -32,8 +32,9 @@ const formattedDate = new Intl.DateTimeFormat('ko-KR', {
   day: 'numeric',
 }).format(pubDate);
 
+const resolvedHeroImage = heroImage && heroImage.startsWith('/') ? `${base}${heroImage}` : heroImage;
 const thumbnailSrc = heroImage && heroImage !== '/images/default-hero.svg'
-  ? heroImage
+  ? resolvedHeroImage
   : `${base}/og/${slug}.svg`;
 
 const displaySummary = summary || description || '6070 어르신을 위한 핵심 복지·연금·건강 가이드입니다.';

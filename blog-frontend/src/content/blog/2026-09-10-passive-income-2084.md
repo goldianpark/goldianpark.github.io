@@ -1,5 +1,6 @@
 ---
 title: '임플란트 재수술 비용: 치료 단계와 보철 수리 항목부터 확인하세요'
+heroImage: '/images/thumbnails/2026-09-10-passive-income-2084.svg'
 description: 임플란트에 문제가 생겼을 때 재식립과 보철 수리를 구분하고, 건강보험 적용 여부와 추가 진료비를 치과에 확인하는 방법을 정리했습니다.
 pubDate: '2026-09-10'
 category: 시니어 건강 & 일상

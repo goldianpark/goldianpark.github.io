@@ -1,5 +1,6 @@
 ---
 title: '대상포진이 의심될 때: 진료 시점과 통증 기록, 예방접종 확인하기'
+heroImage: '/images/thumbnails/2026-09-08-passive-income-9290.svg'
 description: 한쪽 피부의 통증과 물집이 생겼을 때 진료를 서둘러야 하는 이유, 진료 전 적어둘 내용과 대상포진 후 통증 상담 방법을 안내합니다.
 pubDate: '2026-09-08'
 category: 시니어 건강 & 일상

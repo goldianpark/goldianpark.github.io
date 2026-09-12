@@ -1,5 +1,6 @@
 ---
 title: '국민연금 조기수령 vs 연기수령 손익 분석: 몇 살에 받는 것이 가장 유리할까?'
+heroImage: '/images/thumbnails/2026-09-03-national-pension-early-vs-delayed.svg'
 description: 국민연금을 당겨 받는 조기노령연금과 늦춰 받는 연기연금 중 내 건강 상태와 소득에 맞춰 손익분기점 나이를 정확히 계산해 드립니다.
 pubDate: '2026-09-03'
 category: 연금 & 절세 상식

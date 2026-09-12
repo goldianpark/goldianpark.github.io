@@ -1,5 +1,6 @@
 ---
 title: '고령자 복지주택 알아보기: LH 모집공고에서 자격과 신청일 찾는 순서'
+heroImage: '/images/thumbnails/2026-09-08-passive-income-3697.svg'
 description: 고령자 복지주택을 찾을 때 임대유형, 자격 기준일, 보증금과 임대료, 접수 및 서류 제출 일정을 모집공고에서 확인하는 방법을 안내합니다.
 pubDate: '2026-09-08'
 category: 정부지원금 & 복지

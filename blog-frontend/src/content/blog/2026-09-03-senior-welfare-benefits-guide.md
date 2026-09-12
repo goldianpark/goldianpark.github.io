@@ -1,5 +1,6 @@
 ---
 title: '2026년 65세 이상 혜택 총정리 50가지: 의료비, 교통, 통신비 놓치지 않는 법'
+heroImage: '/images/thumbnails/2026-09-03-senior-welfare-benefits-guide.svg'
 description: 만 65세 생일이 지나면 국가와 지자체에서 제공하는 숨은 복지 혜택 50가지를 의료비, 통신비, 교통, 세금 감면 분야별로
   알기 쉽게 총정리해 드립니다.
 pubDate: '2026-09-03'
