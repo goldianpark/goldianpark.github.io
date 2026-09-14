@@ -136,8 +136,9 @@ const faqSchema = (faqs && faqs.length > 0) ? {
   <meta name="google-site-verification" content={siteConfig.seo.googleVerification} />
 )}
 
-<!-- Google AdSense Auto Ads Script -->
+<!-- Google AdSense Official Script & Account Verification -->
 {siteConfig.monetization.adsenseClientId && (
+  <meta name="google-adsense-account" content={siteConfig.monetization.adsenseClientId} />
   <script
     async
     src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${siteConfig.monetization.adsenseClientId}`}
