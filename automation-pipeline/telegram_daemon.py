@@ -15,6 +15,8 @@ from integrations.telegram_bot import _load_env_file, TelegramNotifier
 from integrations.antigravity_runner import AntigravityRunner
 from agents.performance_tracker import PerformanceTracker
 from modules.draft_queue import DraftApprovalQueue
+from modules.gpt_images import prepare_article_images
+from modules.agent_manager import AgentManager
 from agents.editorial_reviewer import EditorialReviewAgent
 from templates.prompt_templates import EDITORIAL_RULES
 from main_pipeline import load_config, publish_queued_draft, KeywordHarvester, ContentWriter, PolicyInspector, GitHubPublisher, GoogleIndexing
@@ -54,7 +56,7 @@ def require_allowed_chat(handler):
             logger.warning("Rejected Telegram update outside the configured chat.")
             return
         current = sessions.get(actual, {})
-        readonly = {"handle_help_command", "handle_status_command", "handle_queue_command", "handle_review_command", "handle_traffic_command", "start"}
+        readonly = {"handle_help_command", "handle_status_command", "handle_queue_command", "handle_review_command", "handle_traffic_command", "start", "handle_delete_command", "handle_agent_command"}
         if current.get("publication_inflight") and handler.__name__ not in readonly:
             return
         return await handler(update, context)
@@ -127,6 +129,7 @@ async def handle_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 ━━━━━━━━━━━━━━━━━━━━
 🤖 <b>기본 명령어 목록:</b>
 
+• <code>/agent</code> : 라즈베리파이 자동화 에이전트 관제 (스케줄 확인, 시작/중지, 즉시실행)
 • <code>/traffic</code> (또는 <code>/views</code>, <code>/clicks</code>) : 오늘 실시간 클릭수 및 뷰(PV/UV) 트래픽 보고서 즉시 조회
 • <code>/status</code> : 라즈베리파이 상태, 타이머 스케줄, 대기 큐 및 세션 조회
 • <code>/queue</code> : 발행 대기 중인 초안 큐 목록 및 감수 점수 조회
@@ -135,6 +138,7 @@ async def handle_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 • <code>/review [ID]</code> : 특정 초안의 AI 편집 의견과 검토 상태 조회
 • <code>/write [주제/자료]</code> : 새로운 블로그 포스팅 기획 및 작성 시작
 • <code>/edit [URL] [요청사항]</code> : 기존 블로그 포스팅 내용 또는 URL(슬러그) 수정
+• <code>/delete [슬러그]</code> : 발행된 블로그 글 영구 삭제 (마크다운+이미지+썸네일)
 • <code>/cancel</code> 또는 <code>/reset</code> : 진행 중인 기획/초안 작업 취소 및 초기화
 • <code>/help</code> : 사용 가능한 명령어 목록 및 사용 가이드 보기
 
@@ -350,11 +354,12 @@ async def handle_queue_command(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         keyboard.append([
             InlineKeyboardButton(f"✅ 승인 #{idx}", callback_data=f"approve:{draft_id}"),
+            InlineKeyboardButton(f"✏️ 수정 #{idx}", callback_data=f"edit_draft:{draft_id}"),
             InlineKeyboardButton(f"📖 초안 #{idx}", callback_data=f"view_draft:{draft_id}"),
             InlineKeyboardButton(f"❌ 보류 #{idx}", callback_data=f"reject:{draft_id}")
         ])
         
-    msg_lines.append("━━━━━━━━━━━━━━━━━━━━\n💡 <i>버튼을 누르거나 <code>/approve &lt;ID&gt;</code> 로 승인할 수 있습니다.</i>")
+    msg_lines.append("━━━━━━━━━━━━━━━━━━━━\n💡 <i>버튼을 누르거나 <code>/approve &lt;ID&gt;</code>, <code>/edit &lt;ID&gt;</code> 로 관리할 수 있습니다.</i>")
     reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
     await update.message.reply_text("\n".join(msg_lines), parse_mode="HTML", reply_markup=reply_markup)
 
@@ -417,6 +422,193 @@ async def handle_reject_command(update: Update, context: ContextTypes.DEFAULT_TY
         await update.message.reply_text(f"⚠️ 초안(<code>{draft_id}</code>)을 찾을 수 없습니다.", parse_mode="HTML")
 
 @require_allowed_chat
+async def handle_delete_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """발행된 블로그 글 삭제"""
+    import urllib.parse
+    args = context.args
+    target_text = " ".join(args).strip() if args else ""
+    
+    if not target_text:
+        # Show recent posts list for selection
+        try:
+            md_files = sorted(glob.glob(os.path.join(CONTENT_DIR, "*.md")), key=os.path.getmtime, reverse=True)[:10]
+            if not md_files:
+                await update.message.reply_text("📋 삭제할 수 있는 게시글이 없습니다.")
+                return
+            msg_lines = [f"🗑️ <b>[{SITE_TITLE} 삭제 가능한 최근 게시글 목록]</b>\n━━━━━━━━━━━━━━━━━━━━"]
+            keyboard = []
+            for idx, fp in enumerate(md_files[:6], 1):
+                slug = os.path.splitext(os.path.basename(fp))[0]
+                with open(fp, "r", encoding="utf-8") as f:
+                    content = f.read()
+                title_match = re.search(r"^title:\s*(.+)$", content, re.MULTILINE)
+                title = title_match.group(1).strip("'\"") if title_match else slug
+                msg_lines.append(f"<b>{idx}.</b> {title}\n  • <code>{slug}</code>")
+                keyboard.append([InlineKeyboardButton(f"🗑️ #{idx} 삭제: {title[:18]}...", callback_data=f"delete_confirm:{slug}")])
+            msg_lines.append("\n━━━━━━━━━━━━━━━━━━━━\n💡 <i>삭제할 글의 버튼을 누르거나 슬러그/링크를 직접 입력하세요:</i>\n<code>/delete &lt;slug 또는 URL&gt;</code>")
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text("\n".join(msg_lines), parse_mode="HTML", reply_markup=reply_markup)
+        except Exception as e:
+            await update.message.reply_text(f"⚠️ 게시글 목록 조회 중 오류: {e}")
+        return
+    
+    # Extract slug from full URL or text
+    raw_input = urllib.parse.unquote(target_text)
+    url_match = re.search(r"blog/([^/\s?#]+)", raw_input)
+    if url_match:
+        slug = url_match.group(1).rstrip("/")
+    else:
+        slug = raw_input.strip().strip("/").split()[-1]
+    
+    filepath = os.path.join(CONTENT_DIR, f"{slug}.md")
+    if not os.path.exists(filepath):
+        # 1. Prefix match
+        matched = [f for f in os.listdir(CONTENT_DIR) if f.startswith(slug) and f.endswith(".md")]
+        # 2. Substring match
+        if not matched:
+            matched = [f for f in os.listdir(CONTENT_DIR) if slug.lower() in f.lower() and f.endswith(".md")]
+        
+        if len(matched) == 1:
+            slug = os.path.splitext(matched[0])[0]
+            filepath = os.path.join(CONTENT_DIR, matched[0])
+        elif len(matched) > 1:
+            keyboard = []
+            msg_lines = [f"🔍 <b>'{slug}' 검색 결과 여러 글이 발견되었습니다:</b>\n━━━━━━━━━━━━━━━━━━━━"]
+            for idx, mf in enumerate(matched[:5], 1):
+                s = os.path.splitext(mf)[0]
+                with open(os.path.join(CONTENT_DIR, mf), "r", encoding="utf-8") as f:
+                    c = f.read()
+                tm = re.search(r"^title:\s*(.+)$", c, re.MULTILINE)
+                t = tm.group(1).strip("'\"") if tm else s
+                msg_lines.append(f"<b>{idx}.</b> {t} (<code>{s}</code>)")
+                keyboard.append([InlineKeyboardButton(f"🗑️ #{idx} 삭제 선택", callback_data=f"delete_confirm:{s}")])
+            keyboard.append([InlineKeyboardButton("❌ 취소", callback_data="btn_cancel_session")])
+            await update.message.reply_text("\n".join(msg_lines), parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+            return
+        else:
+            await update.message.reply_text(f"❌ 해당 게시글(<code>{slug}</code>)을 찾을 수 없습니다.\n<code>/delete</code> 만 입력하시면 최근 글 목록을 확인하실 수 있습니다.", parse_mode="HTML")
+            return
+    
+    # Read title for confirmation
+    with open(filepath, "r", encoding="utf-8") as f:
+        content = f.read()
+    title_match = re.search(r"^title:\s*(.+)$", content, re.MULTILINE)
+    title = title_match.group(1).strip("'\"") if title_match else slug
+    
+    await update.message.reply_text(
+        f"⚠️ <b>[글 삭제 최종 확인]</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+        f"📌 <b>제목</b>: <b>{title}</b>\n"
+        f"🔗 <b>슬러그</b>: <code>{slug}</code>\n\n"
+        f"⚠️ <i>이 작업은 되돌릴 수 없습니다. 마크다운 파일, 썸네일, 본문 이미지가 완전히 삭제되고 Git에 반영됩니다.</i>",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🗑️ 확인 - 영구 삭제", callback_data=f"delete_execute:{slug}")],
+            [InlineKeyboardButton("❌ 취소", callback_data="btn_cancel_session")]
+        ])
+    )
+
+def format_agent_dashboard(mgr: AgentManager) -> (str, InlineKeyboardMarkup):
+    agents = mgr.list_all_agents()
+    lines = [
+        "⚙️ <b>[라즈베리파이 5 자동화 에이전트 관제센터]</b>",
+        "━━━━━━━━━━━━━━━━━━━━",
+        "💡 <i>시스템 스케줄 타이머와 백그라운드 파이프라인 실시간 제어</i>\n"
+    ]
+    
+    keyboard = []
+    row = []
+    for idx, a in enumerate(agents, 1):
+        status_badge = "🟢 활성" if a["timer_active"] else "🔴 중지"
+        time_info = a["left_time"] or a["next_run"]
+        lines.append(f"<b>{idx}.</b> {a['icon']} <b>{a['name']}</b>\n   └ 상태: {status_badge} | ⏱️ <code>{time_info}</code>")
+        
+        btn_text = f"{a['icon']} {a['name'].split()[0]}"
+        row.append(InlineKeyboardButton(btn_text, callback_data=f"agent_view:{a['key']}"))
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+    
+    keyboard.append([InlineKeyboardButton("🔄 현황 새로고침", callback_data="agent_list")])
+    lines.append("\n━━━━━━━━━━━━━━━━━━━━\n👇 <i>제어할 에이전트를 아래 버튼에서 선택하세요:</i>")
+    return "\n".join(lines), InlineKeyboardMarkup(keyboard)
+
+def format_agent_detail(mgr: AgentManager, key: str) -> (str, InlineKeyboardMarkup):
+    st = mgr.get_agent_status(key)
+    if not st:
+        return "❌ 에이전트 정보를 찾을 수 없습니다.", InlineKeyboardMarkup([[InlineKeyboardButton("🔙 목록", callback_data="agent_list")]])
+    
+    timer_badge = "🟢 활성 (ACTIVE)" if st["timer_active"] else "🔴 일시중지 (INACTIVE)"
+    svc_badge = "⚡ 실행 중 (RUNNING)" if st["service_active"] else "💤 대기 중 (IDLE)"
+    
+    text = f"""{st['icon']} <b>[에이전트 제어] {st['name']}</b>
+━━━━━━━━━━━━━━━━━━━━
+📝 <b>설명</b>: {st['desc']}
+⏰ <b>타이머</b>: <code>{st['timer']}</code>
+⚙️ <b>서비스</b>: <code>{st['service']}</code>
+
+📊 <b>현재 상태</b>:
+  • 스케줄 타이머: <b>{timer_badge}</b>
+  • 서비스 상태: <b>{svc_badge}</b>
+  • 다음 실행 예정: <code>{st['next_run']}</code> ({st['left_time'] or '대기'})
+
+━━━━━━━━━━━━━━━━━━━━
+👇 <b>원하시는 작업을 선택하세요:</b>"""
+
+    keyboard = [
+        [InlineKeyboardButton("🚀 지금 즉시 실행 (Run Now)", callback_data=f"agent_run:{key}")],
+    ]
+    if st["timer_active"]:
+        keyboard.append([InlineKeyboardButton("⏸️ 스케줄 타이머 일시중지", callback_data=f"agent_stop:{key}")])
+    else:
+        keyboard.append([InlineKeyboardButton("▶️ 스케줄 타이머 시작", callback_data=f"agent_start:{key}")])
+    
+    keyboard.append([
+        InlineKeyboardButton("🔄 타이머 재시작", callback_data=f"agent_restart:{key}"),
+        InlineKeyboardButton("🔙 에이전트 목록", callback_data="agent_list")
+    ])
+    return text, InlineKeyboardMarkup(keyboard)
+
+@require_allowed_chat
+async def handle_agent_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """라즈베리파이 5 자동화 에이전트 관리 및 스케줄 제어"""
+    mgr = AgentManager()
+    args = context.args
+    
+    if not args:
+        text, reply_markup = format_agent_dashboard(mgr)
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
+        return
+    
+    action = args[0].lower()
+    target_key = args[1].lower() if len(args) > 1 else None
+    
+    if action == "list":
+        text, reply_markup = format_agent_dashboard(mgr)
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
+        return
+        
+    if not target_key:
+        await update.message.reply_text("⚠️ 대상 에이전트 키를 입력해주세요.\n예: <code>/agent start morning</code>, <code>/agent run goldenlife</code>", parse_mode="HTML")
+        return
+        
+    if action == "start":
+        ok, res_msg = mgr.start_agent(target_key)
+        await update.message.reply_text(res_msg, parse_mode="HTML")
+    elif action == "stop":
+        ok, res_msg = mgr.stop_agent(target_key)
+        await update.message.reply_text(res_msg, parse_mode="HTML")
+    elif action == "restart":
+        ok, res_msg = mgr.restart_agent(target_key)
+        await update.message.reply_text(res_msg, parse_mode="HTML")
+    elif action in ("run", "trigger"):
+        ok, res_msg = mgr.trigger_run_now(target_key)
+        await update.message.reply_text(res_msg, parse_mode="HTML")
+    else:
+        await update.message.reply_text(f"⚠️ 알 수 없는 액션: {action}\n(가능 액션: list, start, stop, restart, run)", parse_mode="HTML")
+
+@require_allowed_chat
 async def handle_review_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     queue = DraftApprovalQueue()
@@ -465,6 +657,47 @@ async def route_message(message, user_text, context):
     if session:
         invalidate_approvals(session)
 
+    # 0. Delete Request Detection (자연어 삭제 감지)
+    stripped = user_text.strip()
+    if stripped.startswith("/delete") or any(kw in stripped for kw in ["글 삭제", "포스트 삭제", "게시글 삭제", "글삭제", "포스팅 삭제"]) or stripped == "삭제":
+        clean_arg = re.sub(r"(?:/delete|글\s*삭제(?:해줘)?|포스트\s*삭제(?:해줘)?|게시글\s*삭제(?:해줘)?|삭제(?:해줘)?)", "", stripped).strip()
+        class DummyContext:
+            args = clean_arg.split() if clean_arg else []
+        class DummyUpdate:
+            effective_chat = message.chat
+            class Msg:
+                def __init__(self, m):
+                    self.reply_text = m.reply_text
+            message = Msg(message)
+        await handle_delete_command(DummyUpdate(), DummyContext())
+        return
+
+    # 0-1. Agent & Scheduler Management Detection (자연어 에이전트/스케줄 감지)
+    if stripped.startswith("/agent") or any(kw in stripped for kw in ["에이전트 관리", "스케줄 관리", "타이머 관리", "에이전트", "스케줄러"]):
+        class DummyContext:
+            args = []
+        class DummyUpdate:
+            effective_chat = message.chat
+            class Msg:
+                def __init__(self, m):
+                    self.reply_text = m.reply_text
+            message = Msg(message)
+        await handle_agent_command(DummyUpdate(), DummyContext())
+        return
+
+    # 0-2. Queue Draft Direct Editing Session Feedback
+    if session and session.get("state") == "QUEUE_DRAFT_EDITING":
+        session.setdefault("feedbacks", []).append(user_text)
+        await refine_queued_draft(message, chat_id, user_text, context)
+        return
+
+    # 1-0. Draft Queue Direct Edit Request by ID (e.g. /edit draft_... or 초안 수정 draft_...)
+    draft_match = re.search(r"draft_\d+_\d+_[a-zA-Z0-9가-힣]+", user_text)
+    if (user_text.strip().startswith("/edit") or "초안 수정" in user_text) and draft_match:
+        target_draft_id = draft_match.group(0)
+        await start_queue_draft_edit(message, chat_id, target_draft_id, context)
+        return
+
     # 1. Existing Blog Edit Request
     blog_url_match = re.search(r"(?:https?://[^/\s]+/)?blog/([^/\s?#]+)", user_text)
     if blog_url_match or user_text.strip().startswith("/edit"):
@@ -500,12 +733,12 @@ async def route_message(message, user_text, context):
 async def generate_or_update_topic_plan(message, chat_id, user_input, context, is_update=False):
     if chat_id in sessions:
         invalidate_approvals(sessions[chat_id])
-    loading_text = "🔄 추가 첨언 및 자료를 반영하여 기획안을 보강 중입니다..." if is_update else "⏳ 입력하신 자료를 분석하여 포스팅 기획안을 작성 중입니다. (Antigravity CLI 가동 중...)"
+    loading_text = "🔄 추가 첨언 및 자료를 반영하여 기획안을 보강 중입니다..." if is_update else "⏳ 입력하신 자료를 분석하여 포스팅 기획안을 작성 중입니다. (GPT / Codex CLI 가동 중...)"
     processing_msg = await message.reply_text(loading_text)
 
     session = sessions.get(chat_id, {})
     session["busy"] = True
-    session["action"] = "포스팅 기획안 업데이트 중" if is_update else "새 글 포스팅 기획안 작성 (Antigravity CLI)"
+    session["action"] = "포스팅 기획안 업데이트 중" if is_update else "새 글 포스팅 기획안 작성 (GPT / Codex CLI)"
     session["started_at"] = time.time()
     sessions[chat_id] = session
 
@@ -582,9 +815,9 @@ async def generate_or_update_topic_plan(message, chat_id, user_input, context, i
 
 반드시 마크다운 코드블록(```json) 없이 순수한 JSON으로만 응답하세요.
 """
-        raw_output = runner.generate_text(system_prompt=system_prompt + "\n" + EDITORIAL_RULES, user_prompt=user_prompt)
+        raw_output = await asyncio.to_thread(runner.generate_text, system_prompt=system_prompt + "\n" + EDITORIAL_RULES, user_prompt=user_prompt)
         if not raw_output:
-            raise Exception("Antigravity 파이프라인에서 응답을 생성하지 못했습니다.")
+            raise Exception("GPT 파이프라인에서 응답을 생성하지 못했습니다.")
 
         topic_data = extract_json(raw_output)
 
@@ -674,12 +907,12 @@ async def create_article_draft(chat_id, message_id, context):
 
     status_msg = await context.bot.send_message(
         chat_id=chat_id,
-        text="✍️ <b>Antigravity 에이전트가 주제별 아티클 초안을 작성 중입니다... (약 1~2분 소요)</b>",
+        text="✍️ <b>GPT 에이전트가 주제별 아티클 초안을 작성 중입니다... (약 1~2분 소요)</b>",
         parse_mode="HTML"
     )
 
     session["busy"] = True
-    session["action"] = "주제별 본문 초안 작성 (Antigravity CLI)"
+    session["action"] = "주제별 본문 초안 작성 (GPT / Codex CLI)"
     session["started_at"] = time.time()
     sessions[chat_id] = session
 
@@ -693,7 +926,9 @@ async def create_article_draft(chat_id, message_id, context):
                 f"[사용자 추가 요청] {fb}" for fb in feedbacks[1:]
             ]
 
-        article = writer.write_article(enhanced_topic)
+        article = await asyncio.to_thread(writer.write_article, enhanced_topic)
+        article = await asyncio.to_thread(prepare_article_images, article, config)
+        await asyncio.to_thread(TelegramNotifier(config).send_draft_images, "interactive-preview", article)
         session["draft"] = article
         approval_token = issue_approval(session, "draft")
         session["state"] = "DRAFTED"
@@ -753,7 +988,7 @@ async def refine_article_draft(message, chat_id, user_feedback, context):
 
     current_draft = session["draft"]
     session["busy"] = True
-    session["action"] = "본문 피드백/첨언 반영 및 수정 중 (Antigravity CLI)"
+    session["action"] = "본문 피드백/첨언 반영 및 수정 중 (GPT / Codex CLI)"
     session["started_at"] = time.time()
     sessions[chat_id] = session
 
@@ -794,11 +1029,14 @@ async def refine_article_draft(message, chat_id, user_feedback, context):
   "markdown_content": "수정된 본문 전체 내용 (마크다운 H2, H3, 표, 리스트 포함)"
 }}
 """
-        raw_output = runner.generate_text(system_prompt=system_prompt + "\n" + EDITORIAL_RULES, user_prompt=user_prompt)
+        raw_output = await asyncio.to_thread(runner.generate_text, system_prompt=system_prompt + "\n" + EDITORIAL_RULES, user_prompt=user_prompt)
         if not raw_output:
-            raise Exception("Antigravity 에디터로부터 응답을 받지 못했습니다.")
+            raise Exception("GPT 에디터로부터 응답을 받지 못했습니다.")
 
         updated_draft = extract_json(raw_output)
+        updated_draft = {**session.get("draft", {}), **updated_draft}
+        updated_draft = await asyncio.to_thread(prepare_article_images, updated_draft, config)
+        await asyncio.to_thread(TelegramNotifier(config).send_draft_images, "interactive-preview", updated_draft)
         session["draft"] = updated_draft
         approval_token = issue_approval(session, "draft")
         sessions[chat_id] = session
@@ -829,6 +1067,183 @@ async def refine_article_draft(message, chat_id, user_feedback, context):
 
     except Exception as e:
         logger.error(f"Error in refine_article_draft: {e}")
+        await processing_msg.edit_text(f"❌ 초안 수정 중 오류가 발생했습니다: {e}")
+    finally:
+        if chat_id in sessions:
+            sessions[chat_id]["busy"] = False
+
+# -------------------------------------------------------------
+# STEP 2-1: QUEUE DRAFT DIRECT EDITING & HITL REFINEMENT
+# -------------------------------------------------------------
+async def start_queue_draft_edit(reply_target, chat_id, draft_id, context):
+    queue = DraftApprovalQueue()
+    draft = queue.get_draft(draft_id)
+
+    if not draft:
+        msg = f"⚠️ 초안(<code>{draft_id}</code>)을 대기 큐에서 찾을 수 없습니다."
+        if hasattr(reply_target, "edit_message_text"):
+            await reply_target.edit_message_text(msg, parse_mode="HTML")
+        else:
+            await reply_target.reply_text(msg, parse_mode="HTML")
+        return
+
+    article = draft.get("article", {})
+    title = article.get("title", draft.get("title", "제목 없음"))
+    review = draft.get("review", {})
+    points = draft.get("human_edit_points") or review.get("human_edit_points") or []
+    if not points:
+        body = article.get("markdown_content", "")
+        markers = re.findall(r"(\[(?:💡|🔍)[^\]\n]+\])", body)
+        points = [{"index": i, "marker": m, "recommendation": "수정/확인 필요"} for i, m in enumerate(markers, 1)]
+
+    sessions[chat_id] = {
+        "state": "QUEUE_DRAFT_EDITING",
+        "draft_id": draft_id,
+        "draft": article,
+        "topic": draft.get("topic", {}),
+        "review": review,
+        "human_edit_points": points,
+        "feedbacks": [],
+        "busy": False
+    }
+
+    from html import escape
+    p_lines = []
+    if points:
+        for p in points:
+            idx = p.get("index", len(p_lines) + 1)
+            m = p.get("marker", "")
+            rec = p.get("recommendation") or p.get("guide") or ""
+            p_lines.append(f"  {idx}️⃣ <b>{escape(str(m))}</b>\n     ↳ <i>{escape(str(rec))}</i>")
+        points_info = "💡 <b>[본문 수정 추천 위치 (경험/수치 확인)]</b>:\n" + "\n".join(p_lines) + "\n\n"
+    else:
+        points_info = "💡 <i>본문에 특별한 마커는 없으나, 실제 경험담 추가나 전체적인 내용 보강이 가능합니다.</i>\n\n"
+
+    guide_msg = (
+        f"✏️ <b>[골든라이프 초안 직접 수정 모드 - {escape(title[:30])}]</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"🆔 <b>초안 ID</b>: <code>{escape(draft_id)}</code>\n\n"
+        f"{points_info}"
+        f"💬 <b>수정 안내</b>:\n"
+        f"본문에 추가할 실제 가족/상담 경험담이나 수정/보완 요청사항을 메시지로 보내주세요.\n\n"
+        f"예시:\n"
+        f"• <code>1번에 경험 추가: 주민센터 복지과 방문 시 신분증과 통장사본을 미리 챙겨가면 대기시간이 단축됨</code>\n"
+        f"• <code>전체적으로 2026년 최신 소득인정액 기준과 필요서류를 더 알기 쉽게 설명해줘</code>\n\n"
+        f"보내주신 피드백을 AI가 본문에 자연스럽게 녹여내어 즉시 큐를 갱신합니다."
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("📖 현재 초안 전문 보기", callback_data=f"view_draft:{draft_id}")],
+        [InlineKeyboardButton("❌ 수정 모드 취소", callback_data="btn_cancel_session")]
+    ]
+    await context.bot.send_message(chat_id=chat_id, text=guide_msg, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+
+async def refine_queued_draft(message, chat_id, user_feedback, context):
+    session = sessions.get(chat_id)
+    if not session or not session.get("draft") or not session.get("draft_id"):
+        await message.reply_text("⚠️ 수정 대상 초안이 없습니다. 다시 선택해주세요.")
+        return
+
+    if session.get("busy"):
+        return
+    session["busy"] = True
+    draft_id = session["draft_id"]
+    current_draft = session["draft"]
+
+    processing_msg = await message.reply_text(f"🔄 보내주신 경험/피드백을 본문 초안(<code>{draft_id[:16]}...</code>)에 반영하여 수정 중입니다...", parse_mode="HTML")
+
+    try:
+        runner = AntigravityRunner(config)
+        system_prompt = (
+            "당신은 60~70대 시니어 및 가족을 위한 복지·건강 글의 최고 편집자입니다. "
+            "사용자가 제공한 실제 경험담이나 수정 요청사항을 기존 초안의 해당 위치([💡 사용자 경험/관점 추가] 마커 등)에 자연스럽고 깊이 있게 녹여내어 글을 대폭 업그레이드하세요.\n"
+            "[wikidocs 366621 규칙 엄수]\n"
+            "- 속 빈 서론(예고형 도입부) 금지, 억지 3분할 금지, 공허한 맺음말(형식적 인사) 금지.\n"
+            "- 추상적 형용사 대신 2026년 최신 기준 수치, 신청 절차, 사용자의 실제 경험담 활용.\n"
+            "- 사용자가 입력한 실제 경험/의견을 본문 마커 자리에 자연스러운 팁 문장으로 치환하세요.\n"
+            "- 반드시 유효한 순수 JSON 형식으로만 응답하세요."
+        )
+
+        user_prompt = f"""
+[현재 초안 데이터]
+- 제목: {current_draft.get('title')}
+- 메타 설명: {current_draft.get('description')}
+- 카테고리: {current_draft.get('category')}
+- 태그: {', '.join(current_draft.get('tags', []))}
+- FAQ 목록: {json.dumps(current_draft.get('faqs', []), ensure_ascii=False)}
+- 본문 마크다운:
+{current_draft.get('markdown_content')}
+
+[사용자가 직접 입력한 경험담 및 수정 피드백]
+{user_feedback}
+
+위 사용자의 실제 경험과 피드백을 본문의 마커 위치나 관련 문맥에 어르신과 가족이 읽기 쉬운 자연스러운 문장으로 완벽히 반영하세요.
+사용자가 채워준 마커([💡 사용자 경험/관점 추가])는 사용자의 내용으로 자연스럽게 교체하여 마커를 제거하세요.
+
+출력 JSON 형식:
+{{
+  "title": "수정/보강된 제목",
+  "description": "수정된 메타 디스크립션",
+  "category": "{current_draft.get('category')}",
+  "tags": {json.dumps(current_draft.get('tags', []), ensure_ascii=False)},
+  "readingTime": "5 min read",
+  "faqs": {json.dumps(current_draft.get('faqs', []), ensure_ascii=False)},
+  "change_summary": "수정 및 경험담 반영 핵심 내용 요약 (1~2줄)",
+  "markdown_content": "수정된 본문 전체 내용 (마크다운 H2, H3, 표, 리스트 포함)"
+}}
+"""
+        raw_output = await asyncio.to_thread(runner.generate_text, system_prompt=system_prompt + "\n" + EDITORIAL_RULES, user_prompt=user_prompt)
+        if not raw_output:
+            raise Exception("AI 엔진으로부터 수정 응답을 받지 못했습니다.")
+
+        updated_draft = extract_json(raw_output)
+        updated_draft = {**session.get("draft", {}), **updated_draft}
+        updated_draft = await asyncio.to_thread(prepare_article_images, updated_draft, config)
+
+        # 큐 업데이트!
+        change_summary = updated_draft.get("change_summary", "사용자 직접 수정 및 경험 반영")
+        queue = DraftApprovalQueue()
+        saved = queue.update_draft_content(draft_id, updated_draft, change_summary=change_summary)
+        if not saved:
+            raise OSError("초안 수정 저장에 실패했습니다")
+
+        session["draft"] = updated_draft
+        sessions[chat_id] = session
+
+        inspector = PolicyInspector(config)
+        inspection = inspector.inspect_article(updated_draft)
+        char_count = inspection.get("char_count", len(updated_draft.get("markdown_content", "")))
+
+        # 잔여 마커 확인
+        body = updated_draft.get("markdown_content", "")
+        remaining_markers = re.findall(r"(\[(?:💡|🔍)[^\]\n]+\])", body)
+        marker_status = f"⚠️ 아직 채우지 않은 마커 {len(remaining_markers)}개가 남아있습니다." if remaining_markers else "✅ 모든 경험/확인 마커가 완벽히 반영되었습니다!"
+
+        from html import escape
+        reply_text = (
+            f"🔄 <b>[골든라이프 초안 직접 수정 및 큐 반영 완료]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"📌 <b>제목</b>: <b>{escape(updated_draft.get('title', ''))}</b>\n"
+            f"🆔 <b>초안 ID</b>: <code>{escape(draft_id)}</code>\n"
+            f"💡 <b>수정 내용</b>: {escape(change_summary)}\n"
+            f"📏 <b>본문 분량</b>: <code>{char_count:,}자</code>\n"
+            f"📌 <b>마커 상태</b>: {marker_status}\n\n"
+            f"✨ <i>대기 큐가 성공적으로 갱신되었습니다. 아래 버튼을 눌러 즉시 발행하거나 추가 수정을 진행하세요.</i>"
+        )
+
+        keyboard = [
+            [InlineKeyboardButton("🚀 수정본 즉시 승인 및 발행", callback_data=f"approve:{draft_id}")],
+            [
+                InlineKeyboardButton("✏️ 추가 수정하기", callback_data=f"edit_draft:{draft_id}"),
+                InlineKeyboardButton("📖 수정본 전문 보기", callback_data=f"view_draft:{draft_id}")
+            ],
+            [InlineKeyboardButton("❌ 수정 모드 종료", callback_data="btn_cancel_session")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await processing_msg.edit_text(reply_text, reply_markup=reply_markup, parse_mode="HTML")
+
+    except Exception as e:
+        logger.error(f"Error in refine_queued_draft: {e}")
         await processing_msg.edit_text(f"❌ 초안 수정 중 오류가 발생했습니다: {e}")
     finally:
         if chat_id in sessions:
@@ -919,8 +1334,9 @@ async def execute_batch_publish(chat_id, context):
         queue = DraftApprovalQueue()
         telegram = TelegramNotifier(config)
         for topic in session["topics"]:
-            article = writer.write_article(topic)
-            review = reviewer.review_article(article, topic)
+            article = await asyncio.to_thread(writer.write_article, topic)
+            article = await asyncio.to_thread(prepare_article_images, article, config)
+            review = await asyncio.to_thread(reviewer.review_article, article, topic)
             draft_id = queue.add_draft(article, review, topic=topic)
             completed.append(draft_id)
             telegram.send_review_report(draft_id, article, review)
@@ -936,7 +1352,7 @@ async def execute_batch_publish(chat_id, context):
 async def process_edit_input(message, user_text, blog_url_match, context, is_update=False):
     if message.chat_id in sessions:
         invalidate_approvals(sessions[message.chat_id])
-    loading_text = "🔄 추가 수정 요청사항을 반영 중입니다..." if is_update else "🔍 수정할 블로그 포스팅을 조회하고 수정안을 기획 중입니다. (Antigravity CLI 가동 중...)"
+    loading_text = "🔄 추가 수정 요청사항을 반영 중입니다..." if is_update else "🔍 수정할 블로그 포스팅을 조회하고 수정안을 기획 중입니다. (GPT / Codex CLI 가동 중...)"
     processing_msg = await message.reply_text(loading_text)
     
     chat_id = message.chat_id
@@ -967,7 +1383,7 @@ async def process_edit_input(message, user_text, blog_url_match, context, is_upd
             return
 
     session["busy"] = True
-    session["action"] = f"기존 글({slug}) 수정안 기획 (Antigravity CLI)"
+    session["action"] = f"기존 글({slug}) 수정안 기획 (GPT / Codex CLI)"
     session["started_at"] = time.time()
     sessions[chat_id] = session
 
@@ -1024,12 +1440,15 @@ async def process_edit_input(message, user_text, blog_url_match, context, is_upd
   "markdown_content": "수정된 본문 전체 내용 (마크다운 H2, H3, 표, 리스트 포함)"
 }}
 """
-        raw_output = runner.generate_text(system_prompt=system_prompt + "\n" + EDITORIAL_RULES, user_prompt=user_prompt)
+        raw_output = await asyncio.to_thread(runner.generate_text, system_prompt=system_prompt + "\n" + EDITORIAL_RULES, user_prompt=user_prompt)
         if not raw_output:
-            raise Exception("Antigravity 에디터로부터 응답을 받지 못했습니다.")
+            raise Exception("GPT 에디터로부터 응답을 받지 못했습니다.")
 
         modified_data = extract_json(raw_output)
+        modified_data["slug"] = modified_data.get("new_slug") or slug
+        modified_data = await asyncio.to_thread(prepare_article_images, modified_data, config)
         session["slug"] = slug
+        await asyncio.to_thread(TelegramNotifier(config).send_draft_images, "interactive-preview", modified_data)
         session["data"] = modified_data
         approval_token = issue_approval(session, "data")
         session["filepath"] = filepath
@@ -1177,6 +1596,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"❌ 초안(<code>{target_id[:16]}...</code>)이 발행 보류 처리되었습니다.", parse_mode="HTML")
         return
 
+    if data.startswith("edit_draft:"):
+        target_id = data.split("edit_draft:", 1)[1].strip()
+        await start_queue_draft_edit(query, chat_id, target_id, context)
+        return
+
     if data.startswith("view_draft:"):
         target_id = data.split("view_draft:", 1)[1]
         queue = DraftApprovalQueue()
@@ -1284,6 +1708,95 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    if data.startswith("delete_confirm:"):
+        slug = data.split("delete_confirm:", 1)[1]
+        filepath = os.path.join(CONTENT_DIR, f"{slug}.md")
+        if not os.path.exists(filepath):
+            await query.edit_message_text(f"❌ 해당 게시글(<code>{slug}</code>)을 찾을 수 없습니다.", parse_mode="HTML")
+            return
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+        title_match = re.search(r"^title:\s*(.+)$", content, re.MULTILINE)
+        title = title_match.group(1).strip("'\"" ) if title_match else slug
+        await query.edit_message_text(
+            f"⚠️ <b>[글 삭제 최종 확인]</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+            f"📌 <b>제목</b>: <b>{title}</b>\n"
+            f"🔗 <b>슬러그</b>: <code>{slug}</code>\n\n"
+            f"⚠️ <i>이 작업은 되돌릴 수 없습니다.</i>",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🗑️ 확인 - 영구 삭제", callback_data=f"delete_execute:{slug}")],
+                [InlineKeyboardButton("❌ 취소", callback_data="btn_cancel_session")]
+            ])
+        )
+        return
+
+    if data.startswith("delete_execute:"):
+        slug = data.split("delete_execute:", 1)[1]
+        try:
+            publisher = GitHubPublisher(config)
+            deleted_title = publisher.delete_article(slug, human_approved=True)
+            await query.edit_message_text(
+                f"🗑️ <b>[게시글 삭제 완료]</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+                f"📌 <b>제목</b>: <b>{deleted_title}</b>\n"
+                f"🔗 <b>슬러그</b>: <code>{slug}</code>\n\n"
+                f"✅ <i>마크다운 파일, 썸네일, 본문 이미지가 삭제되고 Git에 커밋되었습니다.</i>",
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"글 삭제 실패: {e}")
+            await query.edit_message_text(f"❌ 글 삭제 중 오류가 발생했습니다: {e}")
+        return
+
+    if data == "agent_list":
+        mgr = AgentManager()
+        text, reply_markup = format_agent_dashboard(mgr)
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_markup)
+        return
+
+    if data.startswith("agent_view:"):
+        key = data.split("agent_view:", 1)[1]
+        mgr = AgentManager()
+        text, reply_markup = format_agent_detail(mgr, key)
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_markup)
+        return
+
+    if data.startswith("agent_start:"):
+        key = data.split("agent_start:", 1)[1]
+        mgr = AgentManager()
+        ok, msg = mgr.start_agent(key)
+        await query.answer(text="타이머 시작됨", show_alert=False)
+        text, reply_markup = format_agent_detail(mgr, key)
+        await query.edit_message_text(f"{msg}\n\n{text}", parse_mode="HTML", reply_markup=reply_markup)
+        return
+
+    if data.startswith("agent_stop:"):
+        key = data.split("agent_stop:", 1)[1]
+        mgr = AgentManager()
+        ok, msg = mgr.stop_agent(key)
+        await query.answer(text="타이머 일시중지됨", show_alert=False)
+        text, reply_markup = format_agent_detail(mgr, key)
+        await query.edit_message_text(f"{msg}\n\n{text}", parse_mode="HTML", reply_markup=reply_markup)
+        return
+
+    if data.startswith("agent_restart:"):
+        key = data.split("agent_restart:", 1)[1]
+        mgr = AgentManager()
+        ok, msg = mgr.restart_agent(key)
+        await query.answer(text="타이머 재시작됨", show_alert=False)
+        text, reply_markup = format_agent_detail(mgr, key)
+        await query.edit_message_text(f"{msg}\n\n{text}", parse_mode="HTML", reply_markup=reply_markup)
+        return
+
+    if data.startswith("agent_run:"):
+        key = data.split("agent_run:", 1)[1]
+        mgr = AgentManager()
+        ok, msg = mgr.trigger_run_now(key)
+        await query.answer(text="파이프라인 백그라운드 가동됨", show_alert=False)
+        text, reply_markup = format_agent_detail(mgr, key)
+        await query.edit_message_text(f"{msg}\n\n{text}", parse_mode="HTML", reply_markup=reply_markup)
+        return
+
     if data == "btn_view_full_edit":
         session = sessions.get(chat_id)
         if session and session.get("data"):
@@ -1300,14 +1813,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def post_init(application):
     commands = [
-        BotCommand("traffic", "실시간 클릭수 & 뷰 트래픽 보고서"),
-        BotCommand("status", "서버 상태 & 대기 큐 조회"),
+        BotCommand("agent", "에이전트 관리 (스케줄/시작/중지/실행)"),
+        BotCommand("approve", "대기 초안 승인 및 배포"),
+        BotCommand("cancel", "진행 중인 작업 취소 및 초기화"),
+        BotCommand("delete", "발행된 글 삭제 (목록/슬러그)"),
+        BotCommand("edit", "기존 글 내용 또는 URL 수정"),
+        BotCommand("help", "사용 가이드 및 명령어 보기"),
         BotCommand("queue", "발행 대기 초안 목록 조회"),
+        BotCommand("reject", "대기 초안 발행 보류"),
+        BotCommand("review", "초안 AI 감수 보고서 조회"),
+        BotCommand("status", "서버 상태, 스케줄 & 대기 큐 조회"),
+        BotCommand("traffic", "실시간 클릭수 & 뷰 트래픽 보고서"),
         BotCommand("write", "새 블로그 글 작성 기획"),
-        BotCommand("help", "사용 가이드 및 명령어"),
     ]
     try:
         await application.bot.set_my_commands(commands)
+        logger.info("✅ 텔레그램 봇 전체 명령어(set_my_commands) 알파벳순 등록 성공!")
     except Exception as e:
         logger.warning(f"set_my_commands 실패: {e}")
 
@@ -1324,6 +1845,7 @@ def main():
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", handle_help_command))
+    app.add_handler(CommandHandler(["agent", "agents"], handle_agent_command))
     app.add_handler(CommandHandler("status", handle_status_command))
     app.add_handler(CommandHandler(["traffic", "views", "clicks", "report"], handle_traffic_command))
     app.add_handler(CommandHandler("cancel", handle_cancel))
@@ -1334,6 +1856,7 @@ def main():
     app.add_handler(CommandHandler("review", handle_review_command))
     app.add_handler(CommandHandler("write", handle_write_command))
     app.add_handler(CommandHandler("edit", handle_edit_command))
+    app.add_handler(CommandHandler("delete", handle_delete_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
     app.add_handler(CallbackQueryHandler(button_callback))
     

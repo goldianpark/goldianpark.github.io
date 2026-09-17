@@ -27,6 +27,15 @@ def article(**changes):
 
 class EditorialSafetyTests(unittest.TestCase):
     def setUp(self):
+        self.images = patch("modules.gpt_images.GPTRunner.generate_image", side_effect=AssertionError("offline: no image generation"))
+        self.images.start()
+        self.addCleanup(self.images.stop)
+        self.prepare = patch("main_pipeline.prepare_article_images", side_effect=lambda article, config: article)
+        self.prepare.start()
+        self.addCleanup(self.prepare.stop)
+        self.daily_images = patch("daily_trend_generator.prepare_article_images", side_effect=lambda article, config: article)
+        self.daily_images.start()
+        self.addCleanup(self.daily_images.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.directory = Path(self.temp.name)
@@ -40,6 +49,9 @@ class EditorialSafetyTests(unittest.TestCase):
         # A missing stub must fail the test rather than contact an external endpoint.
         self.network = patch("requests.sessions.Session.request", side_effect=AssertionError("network disabled in offline tests"))
         self.network.start()
+        self.telegram_images = patch("telegram_daemon.prepare_article_images", side_effect=lambda article, config: article)
+        self.telegram_images.start()
+        self.addCleanup(self.telegram_images.stop)
         self.addCleanup(self.network.stop)
 
     def test_writer_failure_never_substitutes_article(self):

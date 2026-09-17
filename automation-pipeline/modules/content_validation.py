@@ -27,6 +27,14 @@ def validate_metadata(article):
             datetime.fromisoformat(value.replace("Z", "+00:00"))
         except ValueError:
             raise ContentValidationError(f"{key}는 유효한 ISO 날짜여야 합니다 (예: 2026-09-12).") from None
+    if "songTitle" in article:
+        for key in ("songTitle", "artist", "genre"):
+            if not isinstance(article.get(key), str) or not article[key].strip():
+                raise ContentValidationError(f"{key} must be a nonempty string")
+        if article.get("difficulty") not in ("Beginner", "Intermediate", "Advanced"):
+            raise ContentValidationError("Invalid lesson difficulty")
+        if "chartRank" in article and (type(article["chartRank"]) is not int or article["chartRank"] < 1):
+            raise ContentValidationError("chartRank must be a positive integer")
     if "summaryCards" in article:
         cards = article["summaryCards"]
         if not isinstance(cards, list):
@@ -77,7 +85,7 @@ def body_fingerprint(content):
     # Editorial illustrations are separate assets, not a new article body.
     # Keep duplicate detection stable when the same text gains an illustration.
     content = re.sub(
-        r"<!-- article-illustration:([A-Za-z0-9_.-]+) -->[\s\S]*?<!-- /article-illustration:\1 -->",
+        r"<!-- article-illustration:([^\s]+) -->[\s\S]*?<!-- /article-illustration:\1 -->",
         "", content,
     )
     # Ignore headings/formatting: changing only a title must not create a new article.

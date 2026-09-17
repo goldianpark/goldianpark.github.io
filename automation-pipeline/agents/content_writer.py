@@ -13,8 +13,8 @@ class ContentGenerationError(RuntimeError):
 class ContentWriter:
     def __init__(self, config, api_key=None):
         self.config = config
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self.model_name = config.get("agent", {}).get("model_name", "gemini-2.5-flash")
+        self.api_key = None  # Retained constructor compatibility; Codex login supplies authentication.
+        self.model_name = config.get("agent", {}).get("model_name", "gpt-6-astra")
         self.antigravity_runner = AntigravityRunner(config)
 
     def _parse_article(self, raw):
@@ -43,22 +43,11 @@ class ContentWriter:
         )
         try:
             raw = self.antigravity_runner.generate_text(
-                system_prompt=CONTENT_WRITER_SYSTEM_PROMPT, user_prompt=user_prompt)
+                system_prompt=CONTENT_WRITER_SYSTEM_PROMPT, user_prompt=user_prompt,
+                model_name=self.model_name, effort=self.config.get("agent", {}).get("effort", "high"))
             article = self._parse_article(raw)
             if article:
                 return article
         except Exception as exc:
             print(f"[ContentWriter] 엔진 응답 실패: {type(exc).__name__}")
-        if self.api_key:
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=self.api_key)
-                model = genai.GenerativeModel(
-                    model_name=self.model_name, system_instruction=CONTENT_WRITER_SYSTEM_PROMPT,
-                    generation_config={"response_mime_type": "application/json", "temperature": 0.4, "max_output_tokens": 8192})
-                article = self._parse_article(model.generate_content(user_prompt).text)
-                if article:
-                    return article
-            except Exception as exc:
-                print(f"[ContentWriter] API 응답 실패: {type(exc).__name__}")
         raise ContentGenerationError("본문 생성 실패: 유효한 주제별 초안을 받지 못했습니다. 발행하지 않고 재시도/검토가 필요합니다.")

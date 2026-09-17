@@ -8,14 +8,14 @@ from integrations.antigravity_runner import AntigravityRunner
 
 class KeywordHarvester:
     """
-    Antigravity CLI / SDK 또는 RSS 트렌드를 분석하여
+    GPT / Codex CLI 또는 RSS 트렌드를 분석하여
     수익화 및 SEO에 최적화된 블로그 포스팅 주제를 발굴하는 에이전트
     """
 
     def __init__(self, config: Dict[str, Any], api_key: str = None):
         self.config = config
         self.categories = config.get("content", {}).get("categories", [])
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        self.api_key = None  # Retained constructor compatibility; Codex login supplies authentication.
         self.antigravity_runner = AntigravityRunner(config)
         self.rss_sources = config.get("content", {}).get("rss_sources", [])
 
@@ -124,7 +124,7 @@ class KeywordHarvester:
 위 카테고리에서 독자가 해결하려는 구체적인 질문 3개를 기획하세요. 조사하지 않은 검색량, 광고 단가, 효능, 수익이나 소요시간은 단정하지 마세요. JSON 리스트로 반환하세요.
 """
 
-        # 1. Antigravity CLI / SDK 우선 실행
+        # 1. GPT / Codex CLI 우선 실행
         raw_output = self.antigravity_runner.generate_text(
             system_prompt=KEYWORD_HARVESTER_SYSTEM_PROMPT,
             user_prompt=user_prompt
@@ -141,21 +141,6 @@ class KeywordHarvester:
                 pass
 
         # 2. Gemini API 호출 시도
-        if self.api_key:
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=self.api_key)
-                model = genai.GenerativeModel(
-                    model_name=self.config.get("agent", {}).get("model_name", "gemini-2.5-flash"),
-                    system_instruction=KEYWORD_HARVESTER_SYSTEM_PROMPT,
-                    generation_config={"response_mime_type": "application/json"}
-                )
-                response = model.generate_content(user_prompt)
-                ideas = json.loads(response.text)
-                if isinstance(ideas, list) and len(ideas) > 0:
-                    return ideas
-            except Exception as e:
-                print(f"[KeywordHarvester] API 호출 예외: {e}")
 
         # 3. Fallback 아이디어
         return self._generate_fallback_ideas(category_name, seed_keywords)

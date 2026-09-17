@@ -10,7 +10,11 @@
     "author": "골든라이프 편집팀"
   },
   "categories": {
-    "primary": ["정부지원금 & 복지", "연금 & 절세 상식", "시니어 건강 & 일상"],
+    "primary": [
+      "정부지원금 & 복지",
+      "연금 & 절세 상식",
+      "시니어 건강 & 일상"
+    ],
     "topLimit": 3
   },
   "seo": {
@@ -29,8 +33,9 @@
     "botUsername": ""
   },
   "ai": {
-    "provider": "gemini",
-    "model": "gemini-2.5-flash",
-    "tone": "어르신들이 읽기 편안하도록 크고 명확한 글씨, 친절하고 정중하며 신뢰도 높은 설명조"
+    "provider": "codex_cli",
+    "model": "gpt-6-astra",
+    "tone": "어르신들이 읽기 편안하도록 크고 명확한 글씨, 친절하고 정중하며 신뢰도 높은 설명조",
+    "imageProvider": "codex_image_generation"
   }
 }

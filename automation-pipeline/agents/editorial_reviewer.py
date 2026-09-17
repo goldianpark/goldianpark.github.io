@@ -10,8 +10,8 @@ class EditorialReviewAgent:
     """Model advice for a human editor; neither API success nor layout is fact-check proof."""
     def __init__(self, config, api_key=None):
         self.config = config
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self.model_name = config.get("review_agent", {}).get("model_name", "gemini-3.1-pro")
+        self.api_key = None  # Retained constructor compatibility; Codex login supplies authentication.
+        self.model_name = config.get("review_agent", {}).get("model_name", "gpt-6-astra")
         self.effort = config.get("review_agent", {}).get("effort", "high")
         self.antigravity_runner = AntigravityRunner(config)
 
@@ -31,18 +31,6 @@ class EditorialReviewAgent:
                 return self._normalize_report(report, article)
         except Exception as exc:
             print(f"[EditorialReviewAgent] 엔진 감수 실패: {type(exc).__name__}")
-        if self.api_key:
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=self.api_key)
-                model = genai.GenerativeModel(
-                    model_name=self.model_name, system_instruction=EDITORIAL_REVIEWER_SYSTEM_PROMPT,
-                    generation_config={"response_mime_type": "application/json", "temperature": 0.2, "max_output_tokens": 4096})
-                report = self._parse_json_response(model.generate_content(user_prompt).text)
-                if report:
-                    return self._normalize_report(report, article)
-            except Exception as exc:
-                print(f"[EditorialReviewAgent] API 감수 실패: {type(exc).__name__}")
         return self._heuristic_review(article, topic)
 
     def _parse_json_response(self, raw_text):
@@ -61,6 +49,21 @@ class EditorialReviewAgent:
         except (ValueError, TypeError):
             return None
 
+    def _extract_edit_points_from_body(self, markdown_content: str) -> list:
+        """본문 내 [💡 사용자 경험/관점 추가...] 및 [🔍 수치/출처 확인...] 마커 발췌"""
+        if not markdown_content:
+            return []
+        matches = re.findall(r"(\[(?:💡|🔍)[^\]\n]+\])", markdown_content)
+        points = []
+        for idx, m in enumerate(matches, 1):
+            guide = "실제 경험/의견을 추가해주세요." if "💡" in m else "2026년 최신 기준 수치/출처를 확인해주세요."
+            points.append({
+                "index": idx,
+                "marker": m,
+                "recommendation": guide
+            })
+        return points
+
     def _normalize_report(self, data, article):
         data = dict(data)
         data["model_verdict"] = data.get("verdict")
@@ -68,16 +71,56 @@ class EditorialReviewAgent:
         data["is_approved"] = False
         data["review_status"] = "model_advice_only"
         data["fact_check_status"] = "not_independently_verified"
-        data["char_count"] = len(article.get("markdown_content", "").replace(" ", "").replace("\n", ""))
-        data["summary_for_user"] = "AI 검토 의견입니다. 원문 출처, 주제 일치, 코드/제도 조건을 사람이 확인한 뒤 승인해야 합니다. " + str(data.get("summary_for_user", ""))
+        body = article.get("markdown_content", "")
+        data["char_count"] = len(body.replace(" ", "").replace("\n", ""))
+
+        # 7대 품질 체크리스트 보존 및 기본화
+        default_checklist = {
+            "source_attribution": False,
+            "disclaimer": False,
+            "base_date": False,
+            "search_intent": False,
+            "uniqueness": False,
+            "human_touch": False,
+            "ai_cleanliness": False
+        }
+        checklist = data.get("quality_checklist")
+        if isinstance(checklist, dict):
+            default_checklist.update(checklist)
+        data["quality_checklist"] = default_checklist
+
+        # human_edit_points 추출 및 보강
+        raw_points = data.get("human_edit_points")
+        if not isinstance(raw_points, list) or not raw_points:
+            raw_points = self._extract_edit_points_from_body(body)
+        data["human_edit_points"] = raw_points
+        if raw_points:
+            data["quality_checklist"]["human_touch"] = True
+
+        data["summary_for_user"] = str(data.get("summary_for_user", ""))
         return data
 
     def _pending(self, article, reason, status="unavailable"):
-        return {"total_score": 0, "verdict": "REVIEW_REQUIRED", "is_approved": False,
-                "review_status": status, "fact_check_status": "not_checked",
-                "char_count": len(article.get("markdown_content", "").replace(" ", "").replace("\n", "")),
-                "breakdown": {}, "fact_check_details": ["사실 확인 미실시"],
-                "strengths": [], "improvements": [reason], "summary_for_user": reason}
+        body = article.get("markdown_content", "")
+        extracted_points = self._extract_edit_points_from_body(body)
+        return {
+            "total_score": 0, "verdict": "REVIEW_REQUIRED", "is_approved": False,
+            "review_status": status, "fact_check_status": "not_checked",
+            "char_count": len(body.replace(" ", "").replace("\n", "")),
+            "breakdown": {}, "fact_check_details": ["사실 확인 미실시"],
+            "quality_checklist": {
+                "source_attribution": False,
+                "disclaimer": False,
+                "base_date": False,
+                "search_intent": False,
+                "uniqueness": False,
+                "human_touch": bool(extracted_points),
+                "ai_cleanliness": False
+            },
+            "human_edit_points": extracted_points,
+            "strengths": [], "improvements": [reason], "summary_for_user": reason
+        }
 
     def _heuristic_review(self, article, topic):
         return self._pending(article, "감수 엔진 응답을 받지 못했습니다. 형식만으로 사실 확인 점수나 합격을 부여하지 않습니다. 직접 검토가 필요합니다.")
+

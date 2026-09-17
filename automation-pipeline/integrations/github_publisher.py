@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime
 import subprocess
 import yaml
+from modules.gpt_images import referenced_assets, image_identity
 from modules.content_validation import validate_article, ContentValidationError, body_fingerprint
 
 
@@ -50,6 +51,11 @@ class GitHubPublisher:
         if human_approved is not True:
             raise PermissionError("구체적인 초안 본문과 출처에 대한 사람의 승인이 필요합니다.")
         validate_article(article)
+        generation = article.get("image_generation")
+        if generation and (generation.get("status") != "complete" or generation.get("content_identity") != image_identity(article)):
+            raise ContentValidationError("본문이 바뀌었거나 이미지 생성이 미완료입니다. 이미지를 다시 생성하고 검토하세요.")
+        if self.auto_commit:
+            referenced_assets(article, Path(self.repo_root) / "blog-frontend/public")
         fingerprint = body_fingerprint(article["markdown_content"])
         if not fingerprint:
             raise ContentValidationError("본문이 비어 있습니다.")
@@ -73,21 +79,9 @@ class GitHubPublisher:
         for key in ("heroImage", "summaryCards"):
             if key in article:
                 data[key] = article[key]
-        if "heroImage" not in data or not data["heroImage"] or data["heroImage"] == "/images/default-hero.svg":
-            try:
-                from modules.thumbnail_generator import generate_thumbnail_for_post
-                slug = article.get("slug") or self.generate_slug(article.get("title", ""), article.get("category", "general"))
-                post_data = {
-                    "slug": slug,
-                    "title": article.get("title", ""),
-                    "description": article.get("description", ""),
-                    "category": article.get("category", "시니어 건강 & 일상"),
-                    "tags": article.get("tags", [])
-                }
-                data["heroImage"] = generate_thumbnail_for_post(post_data)
-            except Exception:
-                slug = article.get("slug") or self.generate_slug(article.get("title", ""), article.get("category", "general"))
-                data["heroImage"] = f"/images/thumbnails/{slug}.svg"
+        for key in ("difficulty", "genre", "artist", "songTitle", "hangulTitle", "album", "chartRank", "chartSource", "youtubeId"):
+            if key in article:
+                data[key] = article[key]
         if existing is not None:
             data["updatedDate"] = datetime.now().strftime("%Y-%m-%d")
             data.pop("reviewStatus", None)
@@ -103,7 +97,7 @@ class GitHubPublisher:
         path.parent.mkdir(parents=True, exist_ok=True)
         self._save(path, article, self._metadata(article))
         if self.auto_commit:
-            self._git_commit_and_push(str(path), article["title"], slug=slug)
+            self._git_commit_and_push(str(path), article["title"], slug=slug, article=article)
         # A failed Git operation must not mark a keyword as published.
         if pre_commit_hook:
             pre_commit_hook(slug)
@@ -124,16 +118,22 @@ class GitHubPublisher:
             old_path.unlink()
         if self.auto_commit:
             paths = [str(new_path)] + ([str(old_path)] if old_path != new_path else [])
-            # 썸네일 & 본문 이미지도 포함
-            thumb_path = Path(self.repo_root) / f"blog-frontend/public/images/thumbnails/{final_slug}.svg"
-            if thumb_path.exists():
-                paths.append(str(thumb_path))
-            article_img_dir = Path(self.repo_root) / "blog-frontend/public/images/articles"
-            if article_img_dir.exists():
-                for img_file in article_img_dir.glob(f"*{final_slug}*.webp"):
-                    paths.append(str(img_file))
+            paths.extend(referenced_assets(article, Path(self.repo_root) / "blog-frontend/public"))
             self._commit_paths(paths, f"fix(blog): update post - {article['title'][:60]}")
         return str(new_path), final_slug
+
+    def delete_article(self, slug, *, human_approved=False):
+        if human_approved is not True:
+            raise PermissionError("글 삭제는 사람의 명시적 승인이 필요합니다.")
+        path = self._path(slug)
+        if not path.is_file():
+            raise FileNotFoundError(f"정확한 게시글 슬러그가 필요합니다: {slug}")
+        meta, body = self._read_post(path)
+        # Assets may be referenced by another post or queued draft. Keep them until a separate audit.
+        path.unlink()
+        if self.auto_commit:
+            self._commit_paths([str(path)], f"fix(blog): delete post - {meta.get('title', slug)[:60]}")
+        return meta.get("title", slug)
 
     @staticmethod
     def _save(path, article, metadata):
@@ -141,16 +141,11 @@ class GitHubPublisher:
         frontmatter = yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False)
         path.write_text(f"---\n{frontmatter}---\n\n{article['markdown_content']}\n", encoding="utf-8")
 
-    def _git_commit_and_push(self, filepath, title, slug=None):
-        paths = [filepath]
-        if slug:
-            thumb_path = Path(self.repo_root) / f"blog-frontend/public/images/thumbnails/{slug}.svg"
-            if thumb_path.exists():
-                paths.append(str(thumb_path))
-            article_img_dir = Path(self.repo_root) / "blog-frontend/public/images/articles"
-            if article_img_dir.exists():
-                for img_file in article_img_dir.glob(f"*{slug}*.webp"):
-                    paths.append(str(img_file))
+    def _git_commit_and_push(self, filepath, title, slug=None, article=None):
+        if article is None:
+            meta, body = self._read_post(Path(filepath))
+            article = {**meta, "markdown_content": body}
+        paths = [filepath] + referenced_assets(article, Path(self.repo_root) / "blog-frontend/public")
         self._commit_paths(paths, f"feat(blog): publish new post - {title[:60]}")
 
     def _commit_paths(self, paths, message):

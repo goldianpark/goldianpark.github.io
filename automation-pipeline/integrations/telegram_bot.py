@@ -214,17 +214,41 @@ class TelegramNotifier:
         score = review.get("total_score", 0)
         verdict = review.get("verdict", "PENDING")
 
-        msg = (f"📝 <b>[초안 검토 및 승인 요청]</b>\n"
+        # wikidocs 366621 품질 점검 배지
+        checklist = review.get("quality_checklist", {})
+        cl_badges = []
+        if checklist.get("source_attribution"): cl_badges.append("공공출처")
+        if checklist.get("base_date"): cl_badges.append("기준일(2026)")
+        if checklist.get("ai_cleanliness"): cl_badges.append("AI흔적배제")
+        if checklist.get("human_touch"): cl_badges.append("현장팁위치확보")
+        badge_text = f"✨ <b>품질 기준</b>: <code>{' · '.join(cl_badges)}</code>\n" if cl_badges else ""
+
+        # 사람이 직접 수정할 포인트
+        points = review.get("human_edit_points") or article.get("human_edit_points") or []
+        points_text = ""
+        if points:
+            p_lines = []
+            for p in points[:3]:
+                idx = p.get("index", "")
+                m = p.get("marker", "")
+                rec = p.get("recommendation") or p.get("guide") or ""
+                p_lines.append(f"  • <b>{escape(str(m[:40]))}</b>\n    ↳ <i>{escape(str(rec[:45]))}</i>")
+            points_text = f"💡 <b>[사람이 직접 채울 추천 위치]</b>:\n" + "\n".join(p_lines) + "\n\n"
+
+        msg = (f"📝 <b>[골든라이프 초안 검토 및 승인 요청]</b>\n"
                f"━━━━━━━━━━━━━━━━━━━━\n"
                f"📌 <b>제목</b>: <b>{title}</b>\n"
                f"🆔 <b>ID</b>: <code>{escape(draft_id)}</code>\n"
                f"📊 <b>감수 점수</b>: <b>{score}점</b> ({verdict})\n"
+               f"{badge_text}"
                f"🖼️ <b>포함 이미지</b>: 썸네일 1장 + 본문 설명 2장 탑재 완료\n\n"
+               f"{points_text}"
                f"📋 <b>편집 총평</b>:\n{summary}\n\n"
                f"━━━━━━━━━━━━━━━━━━━━\n"
-               f"💡 <i>위 3장의 이미지를 스와이프하여 검토하신 후 승인해주세요.</i>")
+               f"💡 <i>이미지와 본문을 확인하신 후 직접 수정하거나 바로 승인해주세요.</i>")
         return self._send_message(msg, {"inline_keyboard": [
-            [{"text": "📖 본문 초안 보기", "callback_data": f"view_draft:{draft_id}"}],
+            [{"text": "📖 본문 초안 보기", "callback_data": f"view_draft:{draft_id}"},
+             {"text": "✏️ 본문 직접 수정", "callback_data": f"edit_draft:{draft_id}"}],
             [{"text": "✅ 검토 후 즉시 승인 및 발행", "callback_data": f"approve:{draft_id}"},
              {"text": "❌ 발행 보류", "callback_data": f"reject:{draft_id}"}]]})
 

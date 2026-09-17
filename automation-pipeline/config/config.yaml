@@ -2,12 +2,19 @@
 # 🚀 Auto Blog System Configuration (absianp.github.io)
 # ==========================================
 
-# 1. AI 생성 엔진 설정 (Google Antigravity CLI / SDK / On-Device 지원)
+# 1. GPT 생성 엔진 (Codex ChatGPT 로그인 사용)
 engine:
-  provider: "antigravity_cli" # antigravity_cli | antigravity_sdk | local_ollama | gemini_api
-  cli_command: "agy"           # Antigravity CLI 명령어 (agy 또는 antigravity)
-  local_model: "gemma2:2b"     # 라즈베리파이 5 온디바이스 모델 (Ollama / LiteRT)
-  ollama_url: "http://localhost:11434/v1"
+  provider: "codex_cli"
+  cli_command: "codex"
+  timeout_seconds: 900
+  image_timeout_seconds: 900
+
+image_agent:
+  provider: "codex_image_generation"
+  orchestrator_model: "gpt-6-astra"
+  effort: "medium"
+  required: true
+  body_image_count: 2
 
 # 2. 블로그 사이트 메타데이터 (도메인 루트)
 site:
@@ -56,14 +63,15 @@ content:
 
 # 5. AI 에이전트 모델 설정
 agent:
-  model_name: "gemini-2.5-flash"
+  effort: "high"
+  model_name: "gpt-6-astra"
   temperature: 0.7
   max_output_tokens: 4096
 
-# 5-1. 독립 감수 에이전트 설정 (Gemini 3.1 Pro High-Thinking)
+# 5-1. 독립 감수 에이전트 설정 (GPT high reasoning)
 review_agent:
   enabled: true
-  model_name: "gemini-3.1-pro"
+  model_name: "gpt-6-astra"
   effort: "high"
   min_pass_score: 80
 

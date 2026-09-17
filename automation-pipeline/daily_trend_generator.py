@@ -4,6 +4,7 @@ from modules.news_crawler import GoogleNewsCrawler
 from agents.content_writer import ContentWriter
 from agents.editorial_reviewer import EditorialReviewAgent
 from modules.draft_queue import DraftApprovalQueue
+from modules.gpt_images import prepare_article_images
 from main_pipeline import load_config
 
 
@@ -16,7 +17,7 @@ def generate_trend_post(keyword="시니어 복지"):
              "category": "시니어 건강 & 일상", "tags": [keyword],
              "search_intent": "제공된 뉴스 범위의 사실과 확인이 필요한 내용을 구분하기",
              "sources": news_items, "key_points": []}
-    article = ContentWriter(config).write_article(topic)
+    article = prepare_article_images(ContentWriter(config).write_article(topic), config)
     review = EditorialReviewAgent(config).review_article(article, topic)
     draft_id = DraftApprovalQueue().add_draft(article, review, topic=topic)
     print(f"뉴스 초안 검토 대기: {draft_id}")

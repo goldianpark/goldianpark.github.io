@@ -12,19 +12,17 @@ from modules.content_validation import validate_article, ContentValidationError
 from agents.editorial_reviewer import EditorialReviewAgent
 from agents.policy_inspector import PolicyInspector
 from agents.performance_tracker import PerformanceTracker
-from modules.draft_queue import DraftApprovalQueue
+from modules.draft_queue import DraftApprovalQueue, serialize_publication
+from modules.gpt_images import prepare_article_images
 from integrations.github_publisher import GitHubPublisher
 from integrations.google_indexing import GoogleIndexing
 from integrations.telegram_bot import TelegramNotifier
 
-def load_config(config_path: str = "config/config.yaml") -> dict:
-    abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), config_path))
-    if not os.path.exists(abs_path):
-        print(f"⚠️ 설정 파일을 찾을 수 없습니다: {abs_path}")
-        return {}
-    with open(abs_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+def load_config(config_path="config/config.yaml"):
+    from modules.configuration import load_configuration
+    return load_configuration(os.path.dirname(__file__), config_path)
 
+@serialize_publication
 def publish_queued_draft(config: dict, draft_id: str, *, human_approved: bool = False) -> tuple:
     """
     검토 대기 큐(DraftApprovalQueue)의 특정 초안을 승인하여
@@ -130,40 +128,9 @@ def run_auto_pipeline(config: dict, auto_approve: bool = False, target_category:
     article = writer.write_article(selected_topic)
     print(f"✅ 글 작성 완료! 제목: {article.get('title', '')}")
 
-    # 2-1단계: 썸네일 & 본문 설명 이해용 이미지 2종 자동 생성
-    print("\n🎨 [2-1단계: 썸네일 & 본문 설명 이해용 이미지 2종 자동 생성 중...]")
-    publisher = GitHubPublisher(config)
-    slug = article.get("slug") or publisher.generate_slug(article.get("title", ""), article.get("category", ""))
-    article["slug"] = slug
+    article = prepare_article_images(article, config)
 
-    # 썸네일 생성
-    try:
-        from modules.thumbnail_generator import generate_thumbnail_for_post
-        post_data = {
-            "slug": slug,
-            "title": article.get("title", ""),
-            "description": article.get("description", ""),
-            "category": article.get("category", "시니어 건강 & 일상"),
-            "tags": article.get("tags", [])
-        }
-        thumb_url = generate_thumbnail_for_post(post_data)
-        article["heroImage"] = thumb_url
-        print(f"  🖼️ 고해상도 썸네일 생성 완료: {thumb_url}")
-    except Exception as e:
-        print(f"  ⚠️ 썸네일 생성 예외: {e}")
-        article["heroImage"] = f"/images/thumbnails/{slug}.svg"
-
-    # 본문 설명 이해용 이미지 2개 생성 및 삽입
-    try:
-        from modules.article_image_generator import generate_and_integrate_article_images
-        updated_content, images_meta = generate_and_integrate_article_images(article, slug)
-        article["markdown_content"] = updated_content
-        article["article_images"] = images_meta
-        print(f"  📸 본문 설명 이미지 {len(images_meta)}개 생성 및 본문 삽입 완료!")
-    except Exception as e:
-        print(f"  ⚠️ 본문 이미지 생성 예외: {e}")
-
-    # 3단계: Gemini 3.1 Pro (Thinking Effort: High) 독립 감수 에이전트 검증
+    # 3단계: GPT (high reasoning) 독립 감수 에이전트 검증
     print("\n🧐 [3단계: AI 편집 의견 요청 (사실 확인 및 발행 승인 아님)]")
     review = reviewer.review_article(article, selected_topic)
     score = review.get("total_score", 0)
@@ -223,7 +190,7 @@ def run_dryrun_pipeline(config: dict):
 def run_geeknews_weekly_pipeline(config: dict):
     from agents.geeknews_harvester import GeekNewsHarvester
     topic = GeekNewsHarvester(config).harvest_weekly_briefing_topic()
-    article = ContentWriter(config).write_article(topic)
+    article = prepare_article_images(ContentWriter(config).write_article(topic), config)
     review = EditorialReviewAgent(config).review_article(article, topic)
     draft_id = DraftApprovalQueue().add_draft(article, review, topic=topic)
     TelegramNotifier(config).send_review_report(draft_id, article, review)
