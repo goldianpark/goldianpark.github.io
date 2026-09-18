@@ -164,13 +164,13 @@ class EditorialSafetyTests(unittest.TestCase):
         self.assertFalse(result[0])
         self.assertNotEqual(self.queue.get_draft(draft_id)["status"], "published")
 
-    def test_human_can_publish_review_unavailable_draft_after_own_review(self):
+    def test_human_approval_without_git_push_cannot_claim_live_publication(self):
         draft_id = self.queue.add_draft(article(), {"total_score":0, "verdict":"REVIEW_REQUIRED"})
         with patch.object(pipeline, "DraftApprovalQueue", return_value=self.queue), patch.object(pipeline, "GoogleIndexing"), patch.object(pipeline, "TelegramNotifier"):
             success, _ = pipeline.publish_queued_draft(self.config, draft_id, human_approved=True)
-        self.assertTrue(success)
-        self.assertEqual(self.queue.get_draft(draft_id)["status"], "published")
-        self.assertEqual(len(list((self.directory / "blog").glob("*.md"))), 1)
+        self.assertFalse(success)
+        self.assertEqual(self.queue.get_draft(draft_id)["status"], "approved")
+        self.assertFalse((self.directory / "blog").exists())
 
     def test_publisher_requires_human_and_prevents_title_only_duplicate(self):
         publisher = GitHubPublisher(self.config)

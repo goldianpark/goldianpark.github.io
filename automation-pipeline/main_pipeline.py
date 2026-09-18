@@ -4,6 +4,7 @@ import sys
 import yaml
 import argparse
 from datetime import datetime
+from modules.generation_control import legacy_generation_allowed
 
 # 에이전트 및 연동 모듈 로드
 from agents.keyword_harvester import KeywordHarvester
@@ -23,77 +24,32 @@ def load_config(config_path="config/config.yaml"):
     return load_configuration(os.path.dirname(__file__), config_path)
 
 @serialize_publication
-def publish_queued_draft(config: dict, draft_id: str, *, human_approved: bool = False) -> tuple:
-    """
-    검토 대기 큐(DraftApprovalQueue)의 특정 초안을 승인하여
-    GitHub Pages에 최종 퍼블리싱하고 텔레그램 알림 및 색인 요청을 수행
-    """
-    queue = DraftApprovalQueue()
-    draft_item = queue.get_draft(draft_id)
-    if not draft_item:
-        return False, f"초안 ID '{draft_id}'를 찾을 수 없습니다."
-        
-    if draft_item.get("status") == "published":
-        existing_url = draft_item.get("published_url", "")
-        return True, f"이미 발행 완료된 글입니다: {existing_url}"
+def publish_queued_draft(config: dict, draft_id: str, *, human_approved: bool = False, expected_review_token=None) -> tuple:
+    from modules.publication_workflow import submit
+    return submit(config, draft_id, DraftApprovalQueue(), GitHubPublisher, human_approved=human_approved, expected_review_token=expected_review_token)
 
-    if not human_approved:
-        return False, "초안 본문과 출처 검토 후 사람이 승인해야 발행할 수 있습니다."
-    if draft_item.get("status") not in ("pending_review", "approved"):
-        return False, "보류/반려된 초안은 발행할 수 없습니다. 수정 후 다시 검토하세요."
 
-    article = draft_item.get("article", {})
-    topic = draft_item.get("topic", {})
-    review = draft_item.get("review", {})
-    
-    try:
-        validate_article(article, topic)
-    except ContentValidationError as exc:
-        return False, f"발행 전 내용 점검 실패: {exc}"
-    if not queue.mark_approved(draft_item["draft_id"]):
-        return False, "승인 상태 저장 실패. 발행하지 않았습니다."
+@serialize_publication
+def reconcile_queued_draft(config: dict, draft_id: str) -> tuple:
+    from modules.publication_workflow import reconcile
 
-    publisher = GitHubPublisher(config)
-    indexer = GoogleIndexing(config)
-    telegram = TelegramNotifier(config)
-    site_url = config.get("site", {}).get("url", "https://goldianpark.github.io").rstrip("/")
-    
-    existing_slug = draft_item.get("existing_slug") or article.get("existing_slug")
-    try:
-        if existing_slug:
-            saved_path, post_slug = publisher.update_existing_article(existing_slug, article, human_approved=True)
-        else:
-            saved_path = publisher.publish_article(article, human_approved=True)
-            post_slug = os.path.splitext(os.path.basename(saved_path))[0]
-    except Exception as exc:
-        return False, f"발행 실패 (승인 기록 유지): 저장소/Push 상태를 확인하세요. 이미 저장된 글은 기존 글 수정 경로로 처리해야 합니다. {type(exc).__name__}: {exc}"
-    full_post_url = f"{site_url}/blog/{post_slug}/"
-    
-    # 큐 상태 갱신
-    if not queue.mark_published(draft_item["draft_id"], post_slug, full_post_url):
-        return False, "저장/Push 후 큐 갱신 실패. 저장소 상태를 확인하세요."
-    
-    # 키워드 CSV 업데이트
-    if topic.get("_csv_keyword"):
-        try:
-            harvester = KeywordHarvester(config)
-            harvester.mark_csv_keyword_published(topic["_csv_keyword"], post_slug)
-        except Exception:
-            pass
+    def after_verified(draft, record):
+        keyword = draft.get("topic", {}).get("_csv_keyword")
+        if keyword:
+            KeywordHarvester(config).mark_csv_keyword_published(keyword, record["slug"])
 
-    # 색인 요청 (Sitemap Ping)
-    indexer.ping_sitemap()
-    
-    # 텔레그램 발행 완료 알림
-    inspection = {
-        "score": review.get("total_score", 0),
-        "char_count": review.get("char_count") or len(article.get("markdown_content", "").replace(" ", "").replace("\n", ""))
-    }
-    telegram.send_article_published(article, inspection, full_post_url)
-    
-    return True, full_post_url
+    def notify(draft, record):
+        article = draft["article"]
+        TelegramNotifier(config).send_article_published(article, {
+            "score": draft.get("review", {}).get("total_score", 0),
+            "char_count": len(article.get("markdown_content", ""))}, record["url"])
+
+    return reconcile(config, draft_id, DraftApprovalQueue(), GitHubPublisher,
+                     after_verified=after_verified, notify=notify)
 
 def run_auto_pipeline(config: dict, auto_approve: bool = False, target_category: str = None):
+    if not legacy_generation_allowed(config):
+        return
     site_title = config.get("site", {}).get("title", "골든라이프(GoldenLife)")
     site_url = config.get("site", {}).get("url", "https://goldianpark.github.io")
     print("=" * 60)
@@ -154,6 +110,8 @@ def run_auto_pipeline(config: dict, auto_approve: bool = False, target_category:
     print("\n✨ 파이프라인 프로세스가 안전하게 완료되었습니다!")
 
 def run_dryrun_pipeline(config: dict):
+    if not legacy_generation_allowed(config):
+        return
     print("=" * 60)
     print("🔍 [헬스체크 에이전트] 파이프라인 Dry-run 이상 탐지 가동 시작")
     print("=" * 60)
@@ -188,6 +146,8 @@ def run_dryrun_pipeline(config: dict):
         telegram.send_health_report({"error_details": f"🚨 [Dry-run 실패] 파이프라인 에러 감지: {e}"}, is_alert=True)
 
 def run_geeknews_weekly_pipeline(config: dict):
+    if not legacy_generation_allowed(config):
+        return
     from agents.geeknews_harvester import GeekNewsHarvester
     topic = GeekNewsHarvester(config).harvest_weekly_briefing_topic()
     article = prepare_article_images(ContentWriter(config).write_article(topic), config)
@@ -203,11 +163,22 @@ def main():
     parser.add_argument("--mode", choices=["auto", "dryrun", "geeknews_weekly", "trend", "interactive", "report", "morning_report", "evening_report", "revenue_report", "traffic_report", "health", "test_telegram"], default="auto")
     parser.add_argument("--approve", action="store_true", help="호환 옵션: 자동 발행하지 않고 검토 큐에 저장")
     parser.add_argument("--publish-draft", type=str, default=None, help="대기 큐의 특정 draft_id 즉시 승인 및 배포")
+    parser.add_argument("--reconcile-draft", help="승인된 초안의 Pages 및 공개 이미지 확인")
+    parser.add_argument("--reconcile-all", action="store_true", help="배포 대기 중인 승인 초안 모두 확인")
     parser.add_argument("--list-queue", action="store_true", help="대기 큐 목록 조회")
     parser.add_argument("--category", type=str, default=None, help="특정 카테고리 지정")
     args = parser.parse_args()
 
     config = load_config()
+    if args.reconcile_draft or args.reconcile_all:
+        ids = [args.reconcile_draft] if args.reconcile_draft else [d["draft_id"] for d in DraftApprovalQueue().list_deployments()]
+        for draft_id in ids:
+            success, message = reconcile_queued_draft(config, draft_id)
+            print(f"{draft_id}: {'발행 확인 완료' if success else '배포 확인 대기'}: {message}")
+        return
+    if not (args.publish_draft or args.list_queue) and args.mode in ("auto", "dryrun", "geeknews_weekly", "trend", "interactive"):
+        if not legacy_generation_allowed(config):
+            return
     telegram = TelegramNotifier(config)
     tracker = PerformanceTracker(config)
 
@@ -224,7 +195,7 @@ def main():
         if success:
             print(f"🎉 성공적으로 발행되었습니다: {res}")
         else:
-            print(f"❌ 발행 실패: {res}")
+            print(f"⏳ 발행 상태: {res}")
         return
 
     if args.mode == "auto":

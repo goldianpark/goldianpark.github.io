@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from integrations.github_publisher import GitHubPublisher
 from modules.content_validation import ContentValidationError, validate_article
+from modules.draft_queue import article_review_token
 from modules.approval_binding import issue_approval, consume_approval, invalidate_approvals
 import main_pipeline
 
@@ -79,9 +80,10 @@ class ApprovalBoundaryTests(unittest.TestCase):
             queue.assert_called_once()
 
     def test_existing_queue_approval_only_for_configured_chat(self):
-        with patch.object(self.daemon, "publish_queued_draft", return_value=(False,"needs review")) as publish:
-            asyncio.run(self.daemon.button_callback(self.update("approve:known-draft"), self.context))
-            publish.assert_called_once_with(self.daemon.config, "known-draft", human_approved=True)
+        with patch.object(self.daemon, "DraftApprovalQueue") as queue, patch.object(self.daemon, "publish_queued_draft", return_value=(False,"needs review")) as publish:
+            queue.return_value.get_draft.return_value = {"draft_id":"known-draft", "status":"pending_review", "article":{}}
+            asyncio.run(self.daemon.button_callback(self.update("approve:known-draft:"+article_review_token({})), self.context))
+            publish.assert_called_once_with(self.daemon.config, "known-draft", human_approved=True, expected_review_token=article_review_token({}))
 
     def test_invalid_metadata_is_rejected_before_file_write(self):
         invalid = ({"pubDate":"2026-02-30"}, {"pubDate":123}, {"updatedDate":"yesterday"}, {"updatedDate":None},
@@ -150,12 +152,13 @@ class ApprovalBoundaryTests(unittest.TestCase):
             session["draft"] = article(title="B",markdown_content="unapproved B")
             return status
         self.context.bot.send_message.side_effect = during_status
-        with patch.object(self.daemon,"GitHubPublisher") as publisher, patch.object(self.daemon,"GoogleIndexing"), patch.object(self.daemon,"TelegramNotifier"):
-            publisher.return_value.publish_article.return_value = str(self.directory/"approved-a.md")
+        with patch.object(self.daemon,"DraftApprovalQueue") as queue, patch.object(self.daemon,"publish_queued_draft",return_value=(False,"배포 확인 대기")) as publish, patch.object(self.daemon,"GitHubPublisher") as publisher:
+            queue.return_value.add_draft.return_value="queued-a"
             asyncio.run(self.daemon.button_callback(update,self.context))
-            publisher.return_value.publish_article.assert_called_once_with(article(),human_approved=True)
+            self.assertEqual(queue.return_value.add_draft.call_args.args[0],article())
+            publish.assert_called_once_with(self.daemon.config,"queued-a",human_approved=True,expected_review_token=article_review_token(article()))
             asyncio.run(self.daemon.button_callback(update,self.context))
-            publisher.return_value.publish_article.assert_called_once()
+            publish.assert_called_once();publisher.assert_not_called()
         self.assertNotIn("draft_approval",session)
         self.assertFalse(session["busy"])
 
@@ -163,12 +166,22 @@ class ApprovalBoundaryTests(unittest.TestCase):
         session = {"data":article(),"slug":"original"}
         token = issue_approval(session,"data")
         self.daemon.sessions[42] = session
-        with patch.object(self.daemon,"GitHubPublisher") as publisher, patch.object(self.daemon,"GoogleIndexing"):
-            publisher.return_value.update_existing_article.return_value=(str(self.directory/"original.md"),"original")
+        with patch.object(self.daemon,"DraftApprovalQueue") as queue, patch.object(self.daemon,"publish_queued_draft",return_value=(False,"배포 확인 대기")) as publish, patch.object(self.daemon,"GitHubPublisher") as publisher:
+            queue.return_value.add_draft.return_value="queued-edit"
             asyncio.run(self.daemon.button_callback(self.update("btn_apply_edit:"+token),self.context))
-            publisher.return_value.update_existing_article.assert_called_once_with("original",article(),new_slug=None,human_approved=True)
+            self.assertEqual(queue.return_value.add_draft.call_args.args[0],article())
+            self.assertEqual(queue.return_value.add_draft.call_args.kwargs["existing_slug"],"original")
+            publish.assert_called_once_with(self.daemon.config,"queued-edit",human_approved=True,expected_review_token=article_review_token(article()))
             asyncio.run(self.daemon.button_callback(self.update("btn_apply_edit:"+token),self.context))
-            publisher.return_value.update_existing_article.assert_called_once()
+            publish.assert_called_once();publisher.assert_not_called()
+
+    def test_stale_and_unversioned_queue_buttons_cannot_approve(self):
+        with patch.object(self.daemon,"DraftApprovalQueue") as queue, patch.object(self.daemon,"publish_queued_draft") as publish:
+            queue.return_value.get_draft.return_value={"draft_id":"known-draft","article":article(title="changed")}
+            for data in ("approve:known-draft","approve:known-draft:"+article_review_token(article())):
+                asyncio.run(self.daemon.button_callback(self.update(data),self.context))
+            publish.assert_not_called()
+
 
 
 if __name__ == "__main__":

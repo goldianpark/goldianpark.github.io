@@ -87,3 +87,7 @@ github:
   blog_content_dir: "../blog-frontend/src/content/blog"
   auto_git_commit: true
   auto_git_push: true
+
+# New requests use the Codex + agy operations queue.
+operations:
+  legacy_generation_enabled: false
