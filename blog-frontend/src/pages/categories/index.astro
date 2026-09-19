@@ -4,6 +4,7 @@ import AdSense from '../../components/AdSense.astro';
 import { getCollection } from 'astro:content';
 import { getDynamicCategories } from '../../utils/categories';
 import siteConfig from '../../config/site';
+import { getCategoryDescription, getCategoryGuides, isRecommendationEligible } from '../../utils/readingGuides';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -16,7 +17,7 @@ const { allCategories } = await getDynamicCategories(100);
 
 const categoriesWithRecentPosts = allCategories.map(cat => {
   const postsInCat = allPosts
-    .filter(p => p.data.category === cat.name)
+    .filter(p => p.data.category === cat.name && isRecommendationEligible(p))
     .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
   return {
     ...cat,
@@ -43,6 +44,10 @@ const categoriesWithRecentPosts = allCategories.map(cat => {
       </p>
     </div>
 
+    <div class="p-5 bg-amber-50 border border-amber-200 rounded-2xl text-base text-slate-700">
+      어떤 분야부터 읽을지 고민된다면 <a href={`${base}/start/`} class="font-bold text-amber-800 underline underline-offset-4">목적별 시작 안내</a>에서 필요한 글을 골라보세요.
+    </div>
+
     <AdSense slotId="1234567890" type="top-banner" />
 
     <!-- Categories Grid -->
@@ -65,12 +70,18 @@ const categoriesWithRecentPosts = allCategories.map(cat => {
               </a>
             </h2>
             <p class="text-xs sm:text-sm text-slate-600 mb-5">
-              {cat.count}편의 글이 작성되어 있습니다.
+              {getCategoryDescription(cat.name)}
             </p>
+
+            <div class="flex flex-col items-start gap-2 mb-5">
+              {getCategoryGuides(cat.name).map(guide => (
+                <a href={`${base}/start/#${guide.id}`} class="text-sm font-bold text-amber-800 underline underline-offset-4">{guide.title} →</a>
+              ))}
+            </div>
 
             <!-- Latest 3 Articles preview -->
             <div class="space-y-2 pt-4 border-t border-amber-100">
-              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">최신 글 목록</span>
+              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">이 분야에서 읽을 글</span>
               {cat.recentPosts.map(post => (
                 <a
                   href={`${base}/blog/${post.slug}/`}

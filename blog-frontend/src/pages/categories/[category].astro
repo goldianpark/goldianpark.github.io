@@ -4,6 +4,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Card from '../../components/Card.astro';
 import AdSense from '../../components/AdSense.astro';
 import { getCategorySlug, getCategoryName } from '../../utils/slug';
+import { getCategoryDescription, getCategoryGuides } from '../../utils/readingGuides';
 
 export async function getStaticPaths() {
   const allPosts = await getCollection('blog', ({ data }) => {
@@ -31,18 +32,36 @@ export async function getStaticPaths() {
   });
 }
 
-const { categorySlug, categoryName, posts } = Astro.props;
+const { categoryName, posts } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const description = getCategoryDescription(categoryName);
+const guides = getCategoryGuides(categoryName);
 ---
 
 <BaseLayout
   title={`${categoryName} 아티클 모음`}
-  description={`${categoryName} 카테고리에 등록된 유용한 가이드와 실전 팁 모음입니다.`}
+  description={description}
 >
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <nav aria-label="현재 위치" class="text-sm text-slate-600 mb-6">
+      <a href={`${base}/categories/`} class="text-amber-800 underline underline-offset-4">분야별 전체 보기</a>
+      <span class="mx-2" aria-hidden="true">/</span>
+      <span aria-current="page">{categoryName}</span>
+    </nav>
     <div class="mb-10">
       <div class="text-xs font-bold text-amber-800 uppercase tracking-wide mb-1">카테고리</div>
       <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">{categoryName}</h1>
-      <p class="text-slate-600 text-sm mt-2">총 {posts.length}개의 아티클이 등록되어 있습니다.</p>
+      <p class="text-slate-700 text-base leading-relaxed mt-3 max-w-3xl">{description}</p>
+      <p class="text-slate-600 text-sm mt-2">총 {posts.length}개의 글이 있습니다.</p>
+      <nav aria-label="이 분야의 시작 안내" class="mt-5 p-5 bg-amber-50 border border-amber-200 rounded-2xl">
+        <p class="text-base font-bold text-slate-900 mb-3">목적에 맞는 글부터 읽어보세요</p>
+        <div class="flex flex-col items-start gap-3 text-base font-bold text-amber-800">
+          {guides.map(guide => (
+            <a href={`${base}/start/#${guide.id}`} class="underline underline-offset-4">{guide.title} →</a>
+          ))}
+          <a href={`${base}/start/`} class="underline underline-offset-4">시작 안내 전체 보기 →</a>
+        </div>
+      </nav>
     </div>
 
     <AdSense slotId="1234567890" type="top-banner" />

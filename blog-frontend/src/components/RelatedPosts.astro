@@ -1,50 +1,17 @@
 ---
 import { getCollection } from 'astro:content';
+import { getRelatedPosts } from '../utils/readingGuides';
 
 export interface Props {
   currentSlug: string;
-  currentCategory: string;
-  currentTags?: string[];
   limit?: number;
 }
 
-const {
-  currentSlug,
-  currentCategory,
-  currentTags = [],
-  limit = 3,
-} = Astro.props;
-
+const { currentSlug, limit = 3 } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const allPosts = await getCollection('blog', ({ data }) => !data.draft);
-
-// 현재 글을 제외하고 연관도 점수 계산
-const scoredPosts = allPosts
-  .filter((post) => post.slug !== currentSlug)
-  .map((post) => {
-    let score = 0;
-    // 동일 카테고리 가중치 +3점
-    if (post.data.category === currentCategory) {
-      score += 3;
-    }
-    // 공통 태그 가중치 각 +1점
-    const postTags = post.data.tags || [];
-    const sharedTags = postTags.filter((t: string) => currentTags.includes(t));
-    score += sharedTags.length;
-
-    return {
-      post,
-      score,
-      pubDate: post.data.pubDate.valueOf(),
-    };
-  })
-  .sort((a, b) => {
-    if (b.score !== a.score) {
-      return b.score - a.score;
-    }
-    return b.pubDate - a.pubDate;
-  });
-
-const relatedPosts = scoredPosts.slice(0, limit).map((item) => item.post);
+const currentPost = allPosts.find(post => post.slug === currentSlug);
+const relatedPosts = currentPost ? getRelatedPosts(allPosts, currentPost, limit) : [];
 ---
 
 {relatedPosts.length > 0 && (
@@ -52,10 +19,10 @@ const relatedPosts = scoredPosts.slice(0, limit).map((item) => item.post);
     <div class="flex items-center justify-between mb-6">
       <div>
         <h3 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-          <span>💡</span> 함께 읽으면 좋은 관련 추천 글
+          <span>💡</span> 같은 주제로 이어 읽기
         </h3>
         <p class="text-xs sm:text-sm text-slate-500 mt-1">
-          현재 주제와 연결된 실전 인사이트와 활용법을 계속해서 탐색해보세요.
+          지금 읽은 글과 공통 주제가 있는 글을 모았습니다.
         </p>
       </div>
     </div>
@@ -70,13 +37,13 @@ const relatedPosts = scoredPosts.slice(0, limit).map((item) => item.post);
 
         return (
           <a
-            href={`/blog/${post.slug}/`}
+            href={`${base}/blog/${post.slug}/`}
             class="group flex flex-col justify-between bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-md hover:border-blue-400/80 transition-all duration-200"
           >
             <!-- Dynamic SVG Thumbnail -->
             <div class="aspect-[1200/630] bg-slate-900 border-b border-slate-100 overflow-hidden">
               <img
-                src={`/og/${post.slug}.svg`}
+                src={`${base}/og/${post.slug}.svg`}
                 alt={post.data.title}
                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"

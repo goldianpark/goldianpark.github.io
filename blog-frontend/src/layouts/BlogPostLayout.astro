@@ -7,6 +7,7 @@ import RelatedPosts from '../components/RelatedPosts.astro';
 import SummaryCards from '../components/SummaryCards.astro';
 import siteConfig from '../config/site';
 import { getCategorySlug, getTagSlug } from '../utils/slug';
+import { getCategoryGuides } from '../utils/readingGuides';
 
 export interface Props {
   frontmatter: {
@@ -44,6 +45,7 @@ const {
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const categorySlug = getCategorySlug(category);
+const categoryGuides = getCategoryGuides(category);
 
 const formattedDate = new Intl.DateTimeFormat('ko-KR', {
   year: 'numeric',
@@ -267,11 +269,22 @@ const formattedDate = new Intl.DateTimeFormat('ko-KR', {
       )}
     </nav>
 
+    <nav aria-label="목적별로 이어 읽기" class="my-8 p-5 sm:p-6 bg-amber-50 rounded-2xl border border-amber-200">
+      <h2 class="text-lg font-bold text-slate-900">다음에 읽을 글을 찾고 계신가요?</h2>
+      <p class="text-base text-slate-600 mt-2">필요한 목적을 고르면 관련 글과 읽는 순서를 볼 수 있습니다.</p>
+      <div class="flex flex-col items-start gap-3 mt-4 text-base font-bold text-amber-800">
+        {categoryGuides.map(guide => (
+          <a href={`${base}/start/#${guide.id}`} class="underline underline-offset-4">{guide.title} →</a>
+        ))}
+        <a href={`${base}/start/`} class="underline underline-offset-4">목적별 시작 안내 전체 보기 →</a>
+      </div>
+    </nav>
+
     <!-- Bottom AdSense Slot -->
     <AdSense slotId="4567890123" type="bottom-banner" />
 
     <!-- Related Posts -->
-    <RelatedPosts currentSlug={Astro.params.slug || ''} category={category} tags={tags} />
+    <RelatedPosts currentSlug={Astro.params.slug || ''} />
 
     <!-- Giscus Comments -->
     <Giscus />

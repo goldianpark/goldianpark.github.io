@@ -7,6 +7,7 @@ import { getCollection } from 'astro:content';
 import { getPostSummary } from '../utils/summary';
 import { getDynamicCategories } from '../utils/categories';
 import siteConfig from '../config/site';
+import { isRecommendationEligible, resolveReadingGuides } from '../utils/readingGuides';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -15,11 +16,13 @@ const allPosts = await getCollection('blog', ({ data }) => {
 });
 
 const sortedPosts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
-const recentPosts = sortedPosts.slice(0, 12);
+const recentPosts = sortedPosts.filter(isRecommendationEligible).slice(0, 12);
+const guides = resolveReadingGuides(allPosts);
 
 const { primaryCategories, secondaryCategories } = await getDynamicCategories(3);
 
 const categories = [
+  { name: '처음 오셨나요?', href: `${base}/start/` },
   { name: '전체 글', href: `${base}/blog/` },
   { name: '갤러리', href: `${base}/gallery/` },
   ...primaryCategories.map(c => ({ name: c.name, href: c.href })),
@@ -93,6 +96,25 @@ const categories = [
         </div>
 
       </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="start-heading" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+    <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+      <div>
+        <h2 id="start-heading" class="text-2xl sm:text-3xl font-black text-slate-950">무엇부터 찾아볼까요?</h2>
+        <p class="text-base text-slate-600 mt-2">필요한 목적을 고르면 읽어볼 글과 순서를 안내합니다.</p>
+      </div>
+      <a href={`${base}/start/`} class="text-base font-bold text-amber-800 underline underline-offset-4">시작 안내 전체 보기 →</a>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {guides.map(guide => (
+        <a href={`${base}/start/#${guide.id}`} class="group block p-5 sm:p-6 bg-white border-2 border-amber-200 rounded-2xl hover:border-amber-500 hover:bg-amber-50 transition-colors">
+          <h3 class="text-lg font-bold text-slate-900 group-hover:text-amber-900">{guide.title} →</h3>
+          <p class="text-base text-slate-600 mt-2 leading-relaxed">{guide.description}</p>
+          <p class="text-sm font-bold text-amber-800 mt-3">연결된 글 {guide.articles.length}편</p>
+        </a>
+      ))}
     </div>
   </section>
 

@@ -1,8 +1,10 @@
 ---
 import siteConfig from '../config/site';
+import { getDynamicCategories } from '../utils/categories';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const currentYear = new Date().getFullYear();
+const { primaryCategories } = await getDynamicCategories(3);
 ---
 
 <footer class="mt-auto bg-[#1A1612] text-amber-100/80 border-t-2 border-amber-700/40">
@@ -32,9 +34,10 @@ const currentYear = new Date().getFullYear();
       <div>
         <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3">주요 카테고리</h3>
         <ul class="space-y-2 text-sm text-amber-100/70">
-          {siteConfig.categories.primary.map((cat: string) => (
-            <li><a href={`${base}/categories/`} class="hover:text-amber-300 transition-colors">{cat}</a></li>
+          {primaryCategories.map(cat => (
+            <li><a href={cat.href} class="hover:text-amber-300 transition-colors">{cat.name}</a></li>
           ))}
+          <li><a href={`${base}/start/`} class="hover:text-amber-300 transition-colors">목적별 시작 안내</a></li>
           <li><a href={`${base}/blog/`} class="hover:text-amber-300 transition-colors">전체 아티클 목록</a></li>
         </ul>
       </div>
